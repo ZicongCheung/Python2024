@@ -4,7 +4,10 @@ from lxml import etree
 import re
 import random
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
+from tkinter.ttk import *
+import json
+import os
 
 def download_novel():
     global novel_home_url, novel_list_url, novel_name_xpath, chapter_title_xpath, chapter_url_xpath, chapter_content_xpath, novel_file_path_var, CONCURRENT_REQUESTS
@@ -160,48 +163,109 @@ def download_novel():
             novel_file.write("-" * 50 + "\n")
 
     print(f"小说《{novel_name}》的所有章节内容已成功保存至 {novel_file_path}")
+def save_config_to_file(config_name, config_data, file_path):
+    """保存配置到指定路径的文件中，优化处理以避免末尾额外的换行符，并替换XPath中的双引号为单引号"""
+    # 替换XPath表达式中的双引号为单引号，以避免输出时的转义
+    for key in config_data:
+        if isinstance(config_data[key], str) and '//' in config_data[key]:  # 简单判断是否可能是XPath
+            config_data[key] = config_data[key].replace('"', "'")
 
+    config_file_path = f"{file_path}/{config_name}.json"
+    with open(config_file_path, 'w', encoding='utf-8') as file:
+        # 使用json.dumps先转化为字符串，以便后续处理末尾的空白字符
+        json_str = json.dumps(config_data, ensure_ascii=False, indent=4)
+        file.write(json_str)
+        # 移除可能的末尾空白字符（包括换行符）
+        file.seek(-1, os.SEEK_END)
+        while file.read(1).isspace():
+            file.seek(-1, os.SEEK_END)
+            file.truncate()
+    messagebox.showinfo("成功", f"配置已保存至：{config_file_path}")
+def save_config():
+    if messagebox.askyesno("保存配置", "是否导出当前配置？"):
+        config_name = simpledialog.askstring("输入配置名", "请输入配置文件名：")
+        if config_name:  # 用户提供了配置名
+            config_data = {
+                "novel_name_xpath": entry_novel_name_xpath.get(),
+                "chapter_title_xpath": entry_chapter_title_xpath.get(),
+                "chapter_url_xpath": entry_chapter_url_xpath.get(),
+                "chapter_content_xpath": entry_chapter_content_xpath.get(),
+                "novel_file_path": entry_novel_file_path.get()
+            }
+            save_config_to_file(config_name, config_data, entry_config_file_path.get())
+            messagebox.showinfo("成功", "配置已保存。")
 def create_gui():
-    global entry_novel_home_url, entry_novel_list_url, entry_novel_name_xpath, entry_chapter_title_xpath, entry_chapter_url_xpath, entry_chapter_content_xpath, entry_novel_file_path, entry_concurrent_requests
+    global entry_novel_home_url, entry_novel_list_url, entry_novel_name_xpath, entry_chapter_title_xpath, entry_chapter_url_xpath, entry_chapter_content_xpath, entry_novel_file_path, entry_concurrent_requests, entry_config_file_path
 
     root = tk.Tk()
     root.title("ZickNovel")
-    root.geometry("260x320")  # 设置窗口尺寸
-    tk.Label(root, text="小说主页链接:").pack()
-    entry_novel_home_url = tk.Entry(root)
-    entry_novel_home_url.pack()
+    # 设置窗口大小、居中
+    width = 260
+    height = 320
+    screenwidth = root.winfo_screenwidth()
+    screenheight = root.winfo_screenheight()
+    geometry = '%dx%d+%d+%d' % (width, height, (screenwidth - width) / 2, (screenheight - height) / 2)
+    root.geometry(geometry)
+    root.resizable(width=False, height=False)
 
-    tk.Label(root, text="小说列表页链接:").pack()
-    entry_novel_list_url = tk.Entry(root)
-    entry_novel_list_url.pack()
+    label = Label(root, text="小说主页链接:",anchor="center", )
+    label.place(x=0, y=0, width=94, height=30)
+    entry_novel_home_url = Entry(root)
+    entry_novel_home_url.place(x=96, y=0, width=162, height=30)
 
-    tk.Label(root, text="小说名称XPath:").pack()
-    entry_novel_name_xpath = tk.Entry(root)
-    entry_novel_name_xpath.pack()
+    label = Label(root, text="小说列表页链接:", anchor="center", )
+    label.place(x=0, y=32, width=94, height=30)
+    entry_novel_list_url = Entry(root)
+    entry_novel_list_url.place(x=96, y=32, width=162, height=30)
 
-    tk.Label(root, text="章节标题XPath:").pack()
-    entry_chapter_title_xpath = tk.Entry(root)
-    entry_chapter_title_xpath.pack()
+    label = Label(root, text="小说名称XPath:", anchor="center", )
+    label.place(x=0, y=64, width=94, height=30)
+    entry_novel_name_xpath = Entry(root)
+    entry_novel_name_xpath.place(x=96, y=64, width=162, height=30)
 
-    tk.Label(root, text="章节网址XPath:").pack()
-    entry_chapter_url_xpath = tk.Entry(root)
-    entry_chapter_url_xpath.pack()
+    label = Label(root, text="章节标题XPath:", anchor="center", )
+    label.place(x=0, y=96, width=94, height=30)
+    entry_chapter_title_xpath = Entry(root)
+    entry_chapter_title_xpath.place(x=96, y=96, width=162, height=30)
 
-    tk.Label(root, text="章节内容XPath:").pack()
-    entry_chapter_content_xpath = tk.Entry(root)
-    entry_chapter_content_xpath.pack()
+    label = Label(root, text="章节网址XPath:", anchor="center", )
+    label.place(x=0, y=128, width=94, height=30)
+    entry_chapter_url_xpath = Entry(root)
+    entry_chapter_url_xpath.place(x=96, y=128, width=162, height=30)
 
-    tk.Label(root, text="小说保存路径:").pack()
-    entry_novel_file_path = tk.Entry(root)
-    entry_novel_file_path.pack()
+    label = Label(root, text="章节内容XPath:", anchor="center", )
+    label.place(x=0, y=160, width=94, height=30)
+    entry_chapter_content_xpath = Entry(root)
+    entry_chapter_content_xpath.place(x=96, y=160, width=162, height=30)
 
-    tk.Label(root, text="下载线程数:").pack()
-    entry_concurrent_requests = tk.Entry(root)
-    entry_concurrent_requests.pack()
+    label = Label(root, text="小说保存路径:", anchor="center", )
+    label.place(x=0, y=192, width=94, height=30)
+    entry_novel_file_path = Entry(root)
+    entry_novel_file_path.place(x=96, y=192, width=162, height=30)
 
-    download_button = tk.Button(root, text="开始下载", command=download_novel)
-    download_button.pack()
+    label = Label(root, text="下载线程数:", anchor="center", )
+    label.place(x=0, y=224, width=94, height=30)
+    entry_concurrent_requests = Entry(root)
+    entry_concurrent_requests.place(x=96, y=224, width=96, height=30)
 
+    download_button = Button(root, text="开始下载", command=download_novel)
+    download_button.place(x=192, y=224, width=66, height=30)
+
+    label = Label(root, text="保存配置:", anchor="center", )
+    label.place(x=0, y=256, width=52, height=30)
+    cb = Combobox(root, state="readonly", )
+    cb['values'] = ("是", "否")
+    cb.place(x=53, y=256, width=42, height=30)
+    entry_config_file_path = Entry(root)
+    entry_config_file_path.place(x=96, y=256, width=96, height=30)
+    save_config_button = Button(root, text="导出", command=save_config)
+    save_config_button.place(x=192, y=256, width=66, height=30)
+
+    btn = Button(root, text="导入配置", takefocus=False, )
+    btn.place(x=0, y=288, width=66, height=30)
+
+    progressbar = Progressbar(root, )
+    progressbar.place(x=68, y=288, width=190, height=30)
     root.mainloop()
 
 # GUI初始化
