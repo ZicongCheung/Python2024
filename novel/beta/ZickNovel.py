@@ -4,8 +4,7 @@ from lxml import etree
 import re
 import random
 import tkinter as tk
-from tkinter import messagebox, simpledialog
-from tkinter.ttk import *
+from tkinter import messagebox, simpledialog, ttk
 import json
 import os
 
@@ -208,63 +207,76 @@ def create_gui():
     root.geometry(geometry)
     root.resizable(width=False, height=False)
 
-    label = Label(root, text="小说主页链接:",anchor="center", )
+    label = ttk.Label(root, text="小说主页链接:",anchor="center", )
     label.place(x=0, y=0, width=94, height=30)
-    entry_novel_home_url = Entry(root)
+    entry_novel_home_url = ttk.Entry(root)
     entry_novel_home_url.place(x=96, y=0, width=162, height=30)
 
-    label = Label(root, text="小说列表页链接:", anchor="center", )
+    label = ttk.Label(root, text="小说列表页链接:", anchor="center", )
     label.place(x=0, y=32, width=94, height=30)
-    entry_novel_list_url = Entry(root)
+    entry_novel_list_url = ttk.Entry(root)
     entry_novel_list_url.place(x=96, y=32, width=162, height=30)
 
-    label = Label(root, text="小说名称XPath:", anchor="center", )
+    label = ttk.Label(root, text="小说名称XPath:", anchor="center", )
     label.place(x=0, y=64, width=94, height=30)
-    entry_novel_name_xpath = Entry(root)
+    entry_novel_name_xpath = ttk.Entry(root)
     entry_novel_name_xpath.place(x=96, y=64, width=162, height=30)
 
-    label = Label(root, text="章节标题XPath:", anchor="center", )
+    label = ttk.Label(root, text="章节标题XPath:", anchor="center", )
     label.place(x=0, y=96, width=94, height=30)
-    entry_chapter_title_xpath = Entry(root)
+    entry_chapter_title_xpath = ttk.Entry(root)
     entry_chapter_title_xpath.place(x=96, y=96, width=162, height=30)
 
-    label = Label(root, text="章节网址XPath:", anchor="center", )
+    label = ttk.Label(root, text="章节网址XPath:", anchor="center", )
     label.place(x=0, y=128, width=94, height=30)
-    entry_chapter_url_xpath = Entry(root)
+    entry_chapter_url_xpath = ttk.Entry(root)
     entry_chapter_url_xpath.place(x=96, y=128, width=162, height=30)
 
-    label = Label(root, text="章节内容XPath:", anchor="center", )
+    label = ttk.Label(root, text="章节内容XPath:", anchor="center", )
     label.place(x=0, y=160, width=94, height=30)
-    entry_chapter_content_xpath = Entry(root)
+    entry_chapter_content_xpath = ttk.Entry(root)
     entry_chapter_content_xpath.place(x=96, y=160, width=162, height=30)
 
-    label = Label(root, text="小说保存路径:", anchor="center", )
+    label = ttk.Label(root, text="小说保存路径:", anchor="center", )
     label.place(x=0, y=192, width=94, height=30)
-    entry_novel_file_path = Entry(root)
+    entry_novel_file_path = ttk.Entry(root)
     entry_novel_file_path.place(x=96, y=192, width=162, height=30)
 
-    label = Label(root, text="下载线程数:", anchor="center", )
+    label = ttk.Label(root, text="下载线程数:", anchor="center", )
     label.place(x=0, y=224, width=94, height=30)
-    entry_concurrent_requests = Entry(root)
+    entry_concurrent_requests = ttk.Entry(root)
     entry_concurrent_requests.place(x=96, y=224, width=96, height=30)
 
-    download_button = Button(root, text="开始下载", command=download_novel)
+    download_button = ttk.Button(root, text="开始下载", command=download_novel)
     download_button.place(x=192, y=224, width=66, height=30)
 
-    label = Label(root, text="保存配置:", anchor="center", )
+    label = ttk.Label(root, text="保存配置:", anchor="center", )
     label.place(x=0, y=256, width=52, height=30)
-    cb = Combobox(root, state="readonly", )
-    cb['values'] = ("是", "否")
+    # 添加是否保存配置的下拉菜单
+    cb = ttk.Combobox(root, state="readonly", values=("是", "否"))
+    cb.set("否")  # 设置默认值为"否"
     cb.place(x=53, y=256, width=42, height=30)
-    entry_config_file_path = Entry(root)
+    # 根据下拉菜单选择，更新文本框、按钮状态
+    def on_combobox_select(event):
+        selection = cb.get()
+        if selection == "否":
+            entry_config_file_path.state(['disabled'])  # 置灰
+            save_config_button.state(['disabled'])  # 置灰
+        else:
+            entry_config_file_path.state(['!disabled'])  # 可用
+            save_config_button.state(['!disabled'])  # 可用
+    cb.bind("<<ComboboxSelected>>", on_combobox_select)  # 绑定事件处理
+    entry_config_file_path = ttk.Entry(root)
+    entry_config_file_path.state(['disabled'])  # 初始化为置灰状态
     entry_config_file_path.place(x=96, y=256, width=96, height=30)
-    save_config_button = Button(root, text="导出", command=save_config)
+    save_config_button = ttk.Button(root, text="导出", command=save_config)
     save_config_button.place(x=192, y=256, width=66, height=30)
+    save_config_button.state(['disabled'])  # 初始化为置灰状态
 
-    btn = Button(root, text="导入配置", takefocus=False, )
+    btn = ttk.Button(root, text="导入配置", takefocus=False, )
     btn.place(x=0, y=288, width=66, height=30)
 
-    progressbar = Progressbar(root, )
+    progressbar = ttk.Progressbar(root, )
     progressbar.place(x=68, y=288, width=190, height=30)
     root.mainloop()
 

@@ -166,7 +166,7 @@ def create_gui():
 
     root = tk.Tk()
     root.title("ZickNovel")
-    root.geometry("260x320")  # 设置窗口尺寸
+    root.geometry("260x600")  # 设置窗口尺寸
     tk.Label(root, text="小说主页链接:").pack()
     entry_novel_home_url = tk.Entry(root)
     entry_novel_home_url.pack()
