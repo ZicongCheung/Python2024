@@ -1,46 +1,60 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog
-import json
+from tkinter import messagebox, simpledialog, filedialog
+import configparser
 import os
 
 
 def save_config_to_file(config_name, config_data, file_path):
-    """保存配置到指定路径的文件中，优化处理以避免末尾额外的换行符，并替换XPath中的双引号为单引号"""
-    # 替换XPath表达式中的双引号为单引号，以避免输出时的转义
-    for key in config_data:
-        if isinstance(config_data[key], str) and '//' in config_data[key]:  # 简单判断是否可能是XPath
-            config_data[key] = config_data[key].replace('"', "'")
+    config_parser = configparser.ConfigParser()
+    # 添加节
+    config_parser.add_section('ZickNovelConfig')
+    # 写入配置项
+    for key, value in config_data.items():
+        config_parser.set('ZickNovelConfig', key, value)
 
-    config_file_path = f"{file_path}/{config_name}.json"
-    with open(config_file_path, 'w', encoding='utf-8') as file:
-        # 使用json.dumps先转化为字符串，以便后续处理末尾的空白字符
-        json_str = json.dumps(config_data, ensure_ascii=False, indent=4)
-        file.write(json_str)
-        # 移除可能的末尾空白字符（包括换行符）
-        file.seek(-1, os.SEEK_END)
-        while file.read(1).isspace():
-            file.seek(-1, os.SEEK_END)
-            file.truncate()
-    messagebox.showinfo("成功", f"配置已保存至：{config_file_path}")
-def config_download():
+    # 写入INI文件，直接使用用户选择的file_path
+    with open(file_path, 'w', encoding='utf-8') as configfile:
+        config_parser.write(configfile)
+
+
+def save_config():
     if messagebox.askyesno("保存配置", "是否导出当前配置？"):
-        config_name = simpledialog.askstring("输入配置名", "请输入配置文件名：")
-        if config_name:  # 用户提供了配置名
-            config_data = {
-                "novel_name_xpath": entry_novel_name_xpath.get(),
-                "chapter_title_xpath": entry_chapter_title_xpath.get(),
-                "chapter_url_xpath": entry_chapter_url_xpath.get(),
-                "chapter_content_xpath": entry_chapter_content_xpath.get(),
-                "novel_file_path": entry_novel_file_path.get()
-            }
-            save_config_to_file(config_name, config_data, entry_novel_file_path.get())
-            messagebox.showinfo("成功", "配置已保存。")
+        if any(entry.get() == "" for entry in
+               [entry_novel_home_url, entry_novel_name_xpath, entry_chapter_title_xpath,
+                entry_chapter_url_xpath, entry_chapter_content_xpath, entry_concurrent_requests]):
+            messagebox.showerror("错误", "配置必填项未输入，请检查！")
+            return  # 如果有必填项为空，则不执行保存操作
+
+        # 所有必填项都有值，继续保存配置
+        config_data = {
+            "novel_home_url": entry_novel_home_url.get(),
+            "novel_name_xpath": entry_novel_name_xpath.get(),
+            "chapter_title_xpath": entry_chapter_title_xpath.get(),
+            "chapter_url_xpath": entry_chapter_url_xpath.get(),
+            "chapter_content_xpath": entry_chapter_content_xpath.get(),
+            "concurrent_requests": entry_concurrent_requests.get()
+        }
+
+        # 弹出保存文件对话框让用户选择保存路径并命名INI文件
+        file_path = filedialog.asksaveasfilename(title="保存配置文件",
+                                                 defaultextension=".ini",  # 默认文件扩展名为.ini
+                                                 filetypes=[("INI Files", "*.ini")])  # 限制文件类型为INI
+
+        if file_path:  # 用户选择了路径并输入了文件名
+            save_config_to_file(os.path.splitext(os.path.basename(file_path))[0], config_data, file_path)
+            messagebox.showinfo("成功", "配置已保存至：{}".format(file_path))
+        else:  # 用户取消了保存操作
+            return
 def create_gui():
-    global entry_novel_name_xpath, entry_chapter_title_xpath, entry_chapter_url_xpath, entry_chapter_content_xpath, entry_novel_file_path
+    global entry_novel_home_url, entry_novel_name_xpath, entry_chapter_title_xpath, entry_chapter_url_xpath, entry_chapter_content_xpath, entry_config_file_path, entry_concurrent_requests
 
     root = tk.Tk()
     root.title("ZickNovel")
-    root.geometry("500x280")  # 设置窗口尺寸
+    root.geometry("300x380")  # 设置窗口尺寸
+
+    tk.Label(root, text="小说主页网址:").pack()
+    entry_novel_home_url = tk.Entry(root)
+    entry_novel_home_url.pack()
 
     tk.Label(root, text="小说名称XPath:").pack()
     entry_novel_name_xpath = tk.Entry(root)
@@ -58,12 +72,16 @@ def create_gui():
     entry_chapter_content_xpath = tk.Entry(root)
     entry_chapter_content_xpath.pack()
 
-    tk.Label(root, text="配置保存路径:").pack()
-    entry_novel_file_path = tk.Entry(root)
-    entry_novel_file_path.pack()
+    tk.Label(root, text="下载线程数:").pack()
+    entry_concurrent_requests = tk.Entry(root)
+    entry_concurrent_requests.pack()
 
-    download_button = tk.Button(root, text="导出配置", command=config_download)
-    download_button.pack()
+    tk.Label(root, text="配置保存路径:").pack()
+    entry_config_file_path = tk.Entry(root)
+    entry_config_file_path.pack()
+
+    save_config_button = tk.Button(root, text="导出配置", command=save_config)
+    save_config_button.pack()
 
     root.mainloop()
 # GUI初始化
@@ -74,4 +92,3 @@ novel_name_xpath = ""
 chapter_title_xpath = ""
 chapter_url_xpath = ""
 chapter_content_xpath = ""
-novel_file_path_var = ""

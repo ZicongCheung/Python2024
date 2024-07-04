@@ -4,7 +4,7 @@ from lxml import etree
 import re
 import random
 import tkinter as tk
-from tkinter import messagebox, simpledialog, ttk
+from tkinter import messagebox, simpledialog, ttk, filedialog
 import configparser
 import os
 
@@ -165,42 +165,81 @@ def download_novel():
 def save_config_to_file(config_name, config_data, file_path):
     """保存配置到指定路径的INI文件中"""
     config_parser = configparser.ConfigParser()
-
-    # 构建配置内容
-    for section_name, options in config_data.items():
-        config_parser.add_section(section_name)
-        for key, value in options.items():
-            config_parser.set(section_name, key, value)
-
-    # 写入INI文件
-    config_file_path = os.path.join(file_path, f"{config_name}.ini")
-    with open(config_file_path, 'w', encoding='utf-8') as configfile:
+    # 添加节
+    config_parser.add_section('ZickNovelConfig')
+    # 写入配置项
+    for key, value in config_data.items():
+        config_parser.set('ZickNovelConfig', key, value)
+    # 写入INI文件，直接使用用户选择的file_path
+    with open(file_path, 'w', encoding='utf-8') as configfile:
         config_parser.write(configfile)
 
-    messagebox.showinfo("成功", f"配置已保存至：{config_file_path}")
 def save_config():
     if messagebox.askyesno("保存配置", "是否导出当前配置？"):
-        config_name = simpledialog.askstring("输入配置名", "请输入配置文件名：")
-        if config_name:  # 用户提供了配置名
-            if any(entry.get() == "" for entry in
-                   [entry_novel_home_url, entry_novel_name_xpath, entry_chapter_title_xpath,
-                    entry_chapter_url_xpath, entry_chapter_content_xpath, entry_novel_file_path,
-                    entry_concurrent_requests]):
-                messagebox.showerror("错误", "配置必填项未输入，请检查！")
-                return  # 如果有必填项为空，则不执行保存操作
+        if any(entry.get() == "" for entry in
+               [entry_novel_home_url, entry_novel_name_xpath, entry_chapter_title_xpath,
+                entry_chapter_url_xpath, entry_chapter_content_xpath, entry_concurrent_requests]):
+            messagebox.showerror("错误", "配置必填项未输入，请检查！")
+            return  # 如果有必填项为空，则不执行保存操作
 
-            # 所有必填项都有值，继续保存配置
-            config_data = {
-                    "novel_home_url": entry_novel_home_url.get(),
-                    "novel_name_xpath": entry_novel_name_xpath.get(),
-                    "chapter_title_xpath": entry_chapter_title_xpath.get(),
-                    "chapter_url_xpath": entry_chapter_url_xpath.get(),
-                    "chapter_content_xpath": entry_chapter_content_xpath.get(),
-                    "novel_file_path": entry_novel_file_path.get(),
-                    "concurrent_requests": entry_concurrent_requests.get()
-            }
-            save_config_to_file(config_name, config_data, entry_config_file_path.get())
-            messagebox.showinfo("成功", "配置已保存。")
+        # 所有必填项都有值，继续保存配置
+        config_data = {
+                "novel_home_url": entry_novel_home_url.get(),
+                "novel_name_xpath": entry_novel_name_xpath.get(),
+                "chapter_title_xpath": entry_chapter_title_xpath.get(),
+                "chapter_url_xpath": entry_chapter_url_xpath.get(),
+                "chapter_content_xpath": entry_chapter_content_xpath.get(),
+                "novel_file_path": entry_novel_file_path.get(),
+                "concurrent_requests": entry_concurrent_requests.get()
+        }
+        # 弹出保存文件对话框让用户选择保存路径并命名INI文件
+        file_path = filedialog.asksaveasfilename(title="保存配置文件",
+                                                 defaultextension=".ini",  # 默认文件扩展名为.ini
+                                                 filetypes=[("INI Files", "*.ini")])  # 限制文件类型为INI
+
+        if file_path:  # 用户选择了路径并输入了文件名
+            save_config_to_file(os.path.splitext(os.path.basename(file_path))[0], config_data, file_path)
+            messagebox.showinfo("成功", "配置已保存至：{}".format(file_path))
+        else:  # 用户取消了保存操作
+            return
+
+def import_config():
+    """导入配置文件并填充到Entry组件中"""
+    ini_file_path = filedialog.askopenfilename(title="选择INI配置文件", filetypes=[("INI Files", "*.ini")])
+    if ini_file_path:
+        config_parser = configparser.ConfigParser()
+        config_parser.read(ini_file_path)
+
+        # 假设配置都在[ZickNovelConfig]section中
+        if 'ZickNovelConfig' in config_parser:
+            # 获取配置值并填充到Entry组件
+            entry_novel_home_url.delete(0, tk.END)
+            entry_novel_home_url.insert(tk.END, config_parser['ZickNovelConfig'].get('novel_home_url', ''))
+
+            entry_novel_list_url.delete(0, tk.END)  # 确保此Entry组件在你的GUI中已定义
+            entry_novel_list_url.insert(tk.END, config_parser['ZickNovelConfig'].get('novel_list_url', ''))  # 假设novel_list_url也在配置中
+
+            entry_novel_name_xpath.delete(0, tk.END)
+            entry_novel_name_xpath.insert(tk.END, config_parser['ZickNovelConfig'].get('novel_name_xpath', ''))
+
+            entry_chapter_title_xpath.delete(0, tk.END)
+            entry_chapter_title_xpath.insert(tk.END, config_parser['ZickNovelConfig'].get('chapter_title_xpath', ''))
+
+            entry_chapter_url_xpath.delete(0, tk.END)
+            entry_chapter_url_xpath.insert(tk.END, config_parser['ZickNovelConfig'].get('chapter_url_xpath', ''))
+
+            entry_chapter_content_xpath.delete(0, tk.END)
+            entry_chapter_content_xpath.insert(tk.END, config_parser['ZickNovelConfig'].get('chapter_content_xpath', ''))
+
+            entry_novel_file_path.delete(0, tk.END)
+            entry_novel_file_path.insert(tk.END, config_parser['ZickNovelConfig'].get('novel_file_path', ''))
+
+            entry_concurrent_requests.delete(0, tk.END)
+            entry_concurrent_requests.insert(tk.END, config_parser['ZickNovelConfig'].get('concurrent_requests', ''))
+
+            messagebox.showinfo("成功", "配置已成功导入。")
+        else:
+            messagebox.showerror("错误", "INI文件中未找到[ZickNovelConfig] section。")
 def create_gui():
     global entry_novel_home_url, entry_novel_list_url, entry_novel_name_xpath, entry_chapter_title_xpath, entry_chapter_url_xpath, entry_chapter_content_xpath, entry_novel_file_path, entry_concurrent_requests, entry_config_file_path
 
@@ -208,7 +247,7 @@ def create_gui():
     root.title("ZickNovel")
     # 设置窗口大小、居中
     width = 260
-    height = 320
+    height = 322
     screenwidth = root.winfo_screenwidth()
     screenheight = root.winfo_screenheight()
     geometry = '%dx%d+%d+%d' % (width, height, (screenwidth - width) / 2, (screenheight - height) / 2)
@@ -216,76 +255,72 @@ def create_gui():
     root.resizable(width=False, height=False)
 
     label = ttk.Label(root, text="小说主页链接:",anchor="center", )
-    label.place(x=0, y=0, width=94, height=30)
+    label.place(x=0, y=2, width=94, height=30)
     entry_novel_home_url = ttk.Entry(root)
-    entry_novel_home_url.place(x=96, y=0, width=162, height=30)
+    entry_novel_home_url.place(x=96, y=2, width=162, height=30)
 
     label = ttk.Label(root, text="小说列表页链接:", anchor="center", )
-    label.place(x=0, y=32, width=94, height=30)
+    label.place(x=0, y=34, width=94, height=30)
     entry_novel_list_url = ttk.Entry(root)
-    entry_novel_list_url.place(x=96, y=32, width=162, height=30)
+    entry_novel_list_url.place(x=96, y=34, width=162, height=30)
 
     label = ttk.Label(root, text="小说名称XPath:", anchor="center", )
-    label.place(x=0, y=64, width=94, height=30)
+    label.place(x=0, y=66, width=94, height=30)
     entry_novel_name_xpath = ttk.Entry(root)
-    entry_novel_name_xpath.place(x=96, y=64, width=162, height=30)
+    entry_novel_name_xpath.place(x=96, y=66, width=162, height=30)
 
     label = ttk.Label(root, text="章节标题XPath:", anchor="center", )
-    label.place(x=0, y=96, width=94, height=30)
+    label.place(x=0, y=98, width=94, height=30)
     entry_chapter_title_xpath = ttk.Entry(root)
-    entry_chapter_title_xpath.place(x=96, y=96, width=162, height=30)
+    entry_chapter_title_xpath.place(x=96, y=98, width=162, height=30)
 
     label = ttk.Label(root, text="章节网址XPath:", anchor="center", )
-    label.place(x=0, y=128, width=94, height=30)
+    label.place(x=0, y=130, width=94, height=30)
     entry_chapter_url_xpath = ttk.Entry(root)
-    entry_chapter_url_xpath.place(x=96, y=128, width=162, height=30)
+    entry_chapter_url_xpath.place(x=96, y=130, width=162, height=30)
 
     label = ttk.Label(root, text="章节内容XPath:", anchor="center", )
-    label.place(x=0, y=160, width=94, height=30)
+    label.place(x=0, y=162, width=94, height=30)
     entry_chapter_content_xpath = ttk.Entry(root)
-    entry_chapter_content_xpath.place(x=96, y=160, width=162, height=30)
+    entry_chapter_content_xpath.place(x=96, y=162, width=162, height=30)
 
     label = ttk.Label(root, text="小说保存路径:", anchor="center", )
-    label.place(x=0, y=192, width=94, height=30)
+    label.place(x=0, y=194, width=94, height=30)
     entry_novel_file_path = ttk.Entry(root)
-    entry_novel_file_path.place(x=96, y=192, width=162, height=30)
+    entry_novel_file_path.place(x=96, y=194, width=162, height=30)
 
     label = ttk.Label(root, text="下载线程数:", anchor="center", )
-    label.place(x=0, y=224, width=94, height=30)
+    label.place(x=0, y=226, width=94, height=30)
     entry_concurrent_requests = ttk.Entry(root)
-    entry_concurrent_requests.place(x=96, y=224, width=96, height=30)
+    entry_concurrent_requests.place(x=96, y=226, width=103, height=30)
 
     download_button = ttk.Button(root, text="开始下载", command=download_novel)
-    download_button.place(x=192, y=224, width=66, height=30)
+    download_button.place(x=200, y=226, width=60, height=30)
 
     label = ttk.Label(root, text="保存配置:", anchor="center", )
-    label.place(x=0, y=256, width=52, height=30)
+    label.place(x=0, y=258, width=94, height=30)
     # 添加是否保存配置的下拉菜单
     cb = ttk.Combobox(root, state="readonly", values=("是", "否"))
     cb.set("否")  # 设置默认值为"否"
-    cb.place(x=53, y=256, width=42, height=30)
-    # 根据下拉菜单选择，更新文本框、按钮状态
+    cb.place(x=96, y=259, width=43, height=28)
+    # 根据下拉菜单选择，更新按钮状态
     def on_combobox_select(event):
         selection = cb.get()
         if selection == "否":
-            entry_config_file_path.state(['disabled'])  # 置灰
             save_config_button.state(['disabled'])  # 置灰
         else:
-            entry_config_file_path.state(['!disabled'])  # 可用
             save_config_button.state(['!disabled'])  # 可用
     cb.bind("<<ComboboxSelected>>", on_combobox_select)  # 绑定事件处理
-    entry_config_file_path = ttk.Entry(root)
-    entry_config_file_path.state(['disabled'])  # 初始化为置灰状态
-    entry_config_file_path.place(x=96, y=256, width=96, height=30)
-    save_config_button = ttk.Button(root, text="导出", command=save_config)
-    save_config_button.place(x=192, y=256, width=66, height=30)
+
+    save_config_button = ttk.Button(root, text="导出配置", command=save_config)
+    save_config_button.place(x=140, y=258, width=60, height=30)
     save_config_button.state(['disabled'])  # 初始化为置灰状态
 
-    btn = ttk.Button(root, text="导入配置", takefocus=False, )
-    btn.place(x=0, y=288, width=66, height=30)
+    import_config_button = ttk.Button(root, text="导入配置", command=import_config)
+    import_config_button.place(x=200, y=258, width=60, height=30)
 
     progressbar = ttk.Progressbar(root, )
-    progressbar.place(x=68, y=288, width=190, height=30)
+    progressbar.place(x=2, y=290, width=256, height=30)
     root.mainloop()
 
 # GUI初始化
