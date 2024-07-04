@@ -5,7 +5,7 @@ import re
 import random
 import tkinter as tk
 from tkinter import messagebox, simpledialog, ttk
-import json
+import configparser
 import os
 
 def download_novel():
@@ -163,33 +163,41 @@ def download_novel():
 
     print(f"小说《{novel_name}》的所有章节内容已成功保存至 {novel_file_path}")
 def save_config_to_file(config_name, config_data, file_path):
-    """保存配置到指定路径的文件中，优化处理以避免末尾额外的换行符，并替换XPath中的双引号为单引号"""
-    # 替换XPath表达式中的双引号为单引号，以避免输出时的转义
-    for key in config_data:
-        if isinstance(config_data[key], str) and '//' in config_data[key]:  # 简单判断是否可能是XPath
-            config_data[key] = config_data[key].replace('"', "'")
+    """保存配置到指定路径的INI文件中"""
+    config_parser = configparser.ConfigParser()
 
-    config_file_path = f"{file_path}/{config_name}.json"
-    with open(config_file_path, 'w', encoding='utf-8') as file:
-        # 使用json.dumps先转化为字符串，以便后续处理末尾的空白字符
-        json_str = json.dumps(config_data, ensure_ascii=False, indent=4)
-        file.write(json_str)
-        # 移除可能的末尾空白字符（包括换行符）
-        file.seek(-1, os.SEEK_END)
-        while file.read(1).isspace():
-            file.seek(-1, os.SEEK_END)
-            file.truncate()
+    # 构建配置内容
+    for section_name, options in config_data.items():
+        config_parser.add_section(section_name)
+        for key, value in options.items():
+            config_parser.set(section_name, key, value)
+
+    # 写入INI文件
+    config_file_path = os.path.join(file_path, f"{config_name}.ini")
+    with open(config_file_path, 'w', encoding='utf-8') as configfile:
+        config_parser.write(configfile)
+
     messagebox.showinfo("成功", f"配置已保存至：{config_file_path}")
 def save_config():
     if messagebox.askyesno("保存配置", "是否导出当前配置？"):
         config_name = simpledialog.askstring("输入配置名", "请输入配置文件名：")
         if config_name:  # 用户提供了配置名
+            if any(entry.get() == "" for entry in
+                   [entry_novel_home_url, entry_novel_name_xpath, entry_chapter_title_xpath,
+                    entry_chapter_url_xpath, entry_chapter_content_xpath, entry_novel_file_path,
+                    entry_concurrent_requests]):
+                messagebox.showerror("错误", "配置必填项未输入，请检查！")
+                return  # 如果有必填项为空，则不执行保存操作
+
+            # 所有必填项都有值，继续保存配置
             config_data = {
-                "novel_name_xpath": entry_novel_name_xpath.get(),
-                "chapter_title_xpath": entry_chapter_title_xpath.get(),
-                "chapter_url_xpath": entry_chapter_url_xpath.get(),
-                "chapter_content_xpath": entry_chapter_content_xpath.get(),
-                "novel_file_path": entry_novel_file_path.get()
+                    "novel_home_url": entry_novel_home_url.get(),
+                    "novel_name_xpath": entry_novel_name_xpath.get(),
+                    "chapter_title_xpath": entry_chapter_title_xpath.get(),
+                    "chapter_url_xpath": entry_chapter_url_xpath.get(),
+                    "chapter_content_xpath": entry_chapter_content_xpath.get(),
+                    "novel_file_path": entry_novel_file_path.get(),
+                    "concurrent_requests": entry_concurrent_requests.get()
             }
             save_config_to_file(config_name, config_data, entry_config_file_path.get())
             messagebox.showinfo("成功", "配置已保存。")
