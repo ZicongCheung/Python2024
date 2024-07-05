@@ -6,7 +6,6 @@ import random
 import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
 import configparser
-import os
 import queue
 
 class ZickNovel(tk.Tk):
@@ -24,9 +23,9 @@ class ZickNovel(tk.Tk):
         self.progress_var = tk.DoubleVar()
         self.progressbar = ttk.Progressbar(self, variable=self.progress_var)
         self.progressbar.place(x=2, y=258, width=256, height=30)
-        self.total_tasks = 0  # 计算总任务数
-        self.completed_tasks = 0  # 初始化完成的任务计数器
-        self.update_queue = queue.Queue()
+        self.completed_tasks = 0  # 追踪完成的任务数
+        self.update_queue = queue.Queue()  # 创建队列用于跨线程通信
+        self.queue_monitor_id = None  # 用于存储after的返回ID以便取消
     def widget(self):
         self.label = ttk.Label(self, text="小说主页链接:", anchor="center", )
         self.label.place(x=0, y=2, width=94, height=30)
@@ -91,13 +90,22 @@ class ZickNovel(tk.Tk):
         self.import_config_button = ttk.Button(self, text="导入配置", command=self.import_config)
         self.import_config_button.place(x=200, y=226, width=60, height=30)
 
-    def update_progress(self):
-        """根据完成的任务更新进度条"""
-        self.completed_tasks += 1
-        self.progress_var.set(self.completed_tasks / self.total_tasks * 100)
-
+    def monitor_queue_for_updates(self):
+        """监控队列并在主线程更新进度条"""
+        while True:
+            if self.update_queue.empty() and self.completed_tasks == self.total_tasks:
+                break  # 所有章节下载完成且队列为空，退出循环
+            elif not self.update_queue.empty():
+                self.update_queue.get()  # 从队列获取完成信号
+                self.completed_tasks += 1
+                progress = min(self.completed_tasks / self.total_tasks * 100, 100)  # 计算进度百分比
+                self.progress_var.set(progress)  # 更新进度条变量
+                self.update_idletasks()  # 刷新界面
+            else:
+                self.after(100, self.monitor_queue_for_updates)  # 没有新任务时等待并检查
+                break  # 增加此行以避免无限循环
     def download_novel(self):
-        global novel_home_url, novel_list_url, novel_name_xpath, chapter_title_xpath, chapter_url_xpath, chapter_content_xpath, novel_file_path_var, CONCURRENT_REQUESTS
+        global novel_home_url, novel_list_url, novel_name_xpath, chapter_title_xpath, chapter_url_xpath, chapter_content_xpath, CONCURRENT_REQUESTS
         # 获取用户输入的值
         novel_home_url = self.entry_novel_home_url.get()  # 小说主页变量
         novel_list_url = self.entry_novel_list_url.get()  # 小说列表页变量
@@ -203,14 +211,19 @@ class ZickNovel(tk.Tk):
         tree = etree.HTML(response)
         # 获取小说名称并去除符号
         novel_name = tree.xpath(novel_name_xpath)[0].strip()
-        novel_file_path = f"{novel_file_path_var}{novel_name}.txt"
+        # 弹出保存文件对话框让用户选择保存位置和文件名
+        novel_file_path = filedialog.asksaveasfilename(
+            defaultextension=".txt",  # 设置默认文件扩展名为.txt
+            filetypes=[("Text Files", "*.txt")],  # 限制文件类型为txt
+            initialfile=f"{novel_name}.txt",  # 设置默认文件名为novel_name
+            title="选择保存位置"
+        )
+        if not novel_file_path:  # 如果用户取消了选择
+            return
         # 获取章节名称和章节网址
         chapter_title = [chapter_title for chapter_title in tree.xpath(chapter_title_xpath)]  # 为了后续每个章节名称对应正确的网址，新建列表
         chapter_url = [novel_home_url + chapter_url for chapter_url in tree.xpath(chapter_url_xpath)]
         dic1 = dict(zip(chapter_title, chapter_url))
-
-        # 设置 total_tasks
-        self.total_tasks = len(chapter_title)
 
         # 定义下载章节内容的函数
         def download_chapter(chapter_info):
@@ -225,32 +238,27 @@ class ZickNovel(tk.Tk):
                 print(f"下载章节《{title}》时出错：{e}")
                 return title, None
 
-        self.update_progress()  # 更新进度条
         # 使用线程池进行并发下载，并收集结果
         chapters_content = []
 
-        # 用于监控队列并触发UI更新的线程
-        def monitor_queue_for_updates():
-            while True:
-                if not self.update_queue.empty():
-                    self.update_queue.get()
-                    self.update_progress()
-                else:  # 当队列为空时，检查所有章节是否都已完成
-                    if self.completed_tasks == self.total_tasks:
-                        break
-                self.update_idletasks()  # 确保UI能及时刷新
-            self.after_cancel(self.queue_monitor_id)  # 所有章节下载完毕后，取消监控循环
+        # 设置 total_tasks
+        self.total_tasks = len(chapter_title)
+        self.progress_var.set(0)  # 初始化进度条
 
-        # 在开始下载时启动一个定时器来检查队列
-        self.queue_monitor_id = self.after(100, monitor_queue_for_updates)
-
+        # 开始监控队列
+        self.queue_monitor_id = self.after(100, self.monitor_queue_for_updates)
         with concurrent.futures.ThreadPoolExecutor(max_workers=CONCURRENT_REQUESTS) as executor:
             futures = {executor.submit(download_chapter, (title, url)) for title, url in dic1.items()}
             for future in concurrent.futures.as_completed(futures):
                 title, contents = future.result()
                 if contents:
+                    self.update_queue.put(1)  # 下载完成，向队列发送信号
                     chapters_content.append((title, contents))
-                    self.update_queue.put(1)  # 下载完成，通知主线程更新进度
+
+        # 下载完成后，确保所有UI更新完成
+        self.after_cancel(self.queue_monitor_id)  # 停止监控队列
+        self.progress_var.set(100)  # 确保进度条满格
+
         # 提取章节标题中的数字，假设数字位于"第"和"章"之间
         def chapter_number(title):
             match = re.search(r'\d+', title)

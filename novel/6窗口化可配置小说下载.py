@@ -4,10 +4,10 @@ from lxml import etree
 import re
 import random
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 
 def download_novel():
-    global novel_home_url, novel_list_url, novel_name_xpath, chapter_title_xpath, chapter_url_xpath, chapter_content_xpath, novel_file_path_var, CONCURRENT_REQUESTS
+    global novel_home_url, novel_list_url, novel_name_xpath, chapter_title_xpath, chapter_url_xpath, chapter_content_xpath, novel_file_path, CONCURRENT_REQUESTS
     # 获取用户输入的值
     novel_home_url = entry_novel_home_url.get()  # 小说主页变量
     novel_list_url = entry_novel_list_url.get()  # 小说列表页变量
@@ -15,7 +15,6 @@ def download_novel():
     chapter_title_xpath = entry_chapter_title_xpath.get()  # 小说章节名称变量
     chapter_url_xpath = entry_chapter_url_xpath.get()  # 小说章节网址名称变量
     chapter_content_xpath = entry_chapter_content_xpath.get()  # 小说章节内容变量
-    novel_file_path_var = entry_novel_file_path.get()  # 小说TXT文档保存路径变量
     try:
         CONCURRENT_REQUESTS = int(entry_concurrent_requests.get())
         if CONCURRENT_REQUESTS <= 0:
@@ -114,7 +113,15 @@ def download_novel():
     tree = etree.HTML(response)
     # 获取小说名称并去除符号
     novel_name = tree.xpath(novel_name_xpath)[0].strip()
-    novel_file_path = f"{novel_file_path_var}{novel_name}.txt"
+    # 弹出保存文件对话框让用户选择保存位置和文件名
+    novel_file_path = filedialog.asksaveasfilename(
+        defaultextension=".txt",  # 设置默认文件扩展名为.txt
+        filetypes=[("Text Files", "*.txt")],  # 限制文件类型为txt
+        initialfile=f"{novel_name}.txt",  # 设置默认文件名为novel_name
+        title="选择保存位置"
+    )
+    if not novel_file_path:  # 如果用户取消了选择
+        return
     # 获取章节名称和章节网址
     chapter_title = [chapter_title for chapter_title in tree.xpath(chapter_title_xpath)]  # 为了后续每个章节名称对应正确的网址，新建列表
     chapter_url = [novel_home_url + chapter_url for chapter_url in tree.xpath(chapter_url_xpath)]
@@ -214,5 +221,5 @@ novel_name_xpath = ""
 chapter_title_xpath = ""
 chapter_url_xpath = ""
 chapter_content_xpath = ""
-novel_file_path_var = ""
+novel_file_path = ""
 CONCURRENT_REQUESTS = 10  # 默认并发请求数量
