@@ -4,17 +4,15 @@ from lxml import etree
 import re
 import random
 import tkinter as tk
-from tkinter import messagebox, ttk, filedialog
-import configparser
-import os
+from tkinter import messagebox, ttk
 import queue
 
-class ZickNovel(tk.Tk):
+class DownloadProgressbar(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("ZickNovel")
         width = 260
-        height = 291
+        height = 322
         screenwidth = self.winfo_screenwidth()
         screenheight = self.winfo_screenheight()
         geometry = f'{width}x{height}+{(screenwidth - width) // 2}+{(screenheight - height) // 2}'
@@ -23,73 +21,53 @@ class ZickNovel(tk.Tk):
         self.widget()
         self.progress_var = tk.DoubleVar()
         self.progressbar = ttk.Progressbar(self, variable=self.progress_var)
-        self.progressbar.place(x=2, y=258, width=256, height=30)
+        self.progressbar.place(x=2, y=290, width=256, height=30)
         self.total_tasks = 0  # 计算总任务数
         self.completed_tasks = 0  # 初始化完成的任务计数器
         self.update_queue = queue.Queue()
     def widget(self):
-        self.label = ttk.Label(self, text="小说主页链接:", anchor="center", )
-        self.label.place(x=0, y=2, width=94, height=30)
+        label = ttk.Label(self, text="小说主页链接:", anchor="center", )
+        label.place(x=0, y=2, width=94, height=30)
         self.entry_novel_home_url = ttk.Entry(self)
         self.entry_novel_home_url.place(x=96, y=2, width=162, height=30)
 
-        self.label = ttk.Label(self, text="小说列表页链接:", anchor="center", )
-        self.label.place(x=0, y=34, width=94, height=30)
+        label = ttk.Label(self, text="小说列表页链接:", anchor="center", )
+        label.place(x=0, y=34, width=94, height=30)
         self.entry_novel_list_url = ttk.Entry(self)
         self.entry_novel_list_url.place(x=96, y=34, width=162, height=30)
 
-        self.label = ttk.Label(self, text="小说名称XPath:", anchor="center", )
-        self.label.place(x=0, y=66, width=94, height=30)
+        label = ttk.Label(self, text="小说名称XPath:", anchor="center", )
+        label.place(x=0, y=66, width=94, height=30)
         self.entry_novel_name_xpath = ttk.Entry(self)
         self.entry_novel_name_xpath.place(x=96, y=66, width=162, height=30)
 
-        self.label = ttk.Label(self, text="章节标题XPath:", anchor="center", )
-        self.label.place(x=0, y=98, width=94, height=30)
+        label = ttk.Label(self, text="章节标题XPath:", anchor="center", )
+        label.place(x=0, y=98, width=94, height=30)
         self.entry_chapter_title_xpath = ttk.Entry(self)
         self.entry_chapter_title_xpath.place(x=96, y=98, width=162, height=30)
 
-        self.label = ttk.Label(self, text="章节网址XPath:", anchor="center", )
-        self.label.place(x=0, y=130, width=94, height=30)
+        label = ttk.Label(self, text="章节网址XPath:", anchor="center", )
+        label.place(x=0, y=130, width=94, height=30)
         self.entry_chapter_url_xpath = ttk.Entry(self)
         self.entry_chapter_url_xpath.place(x=96, y=130, width=162, height=30)
 
-        self.label = ttk.Label(self, text="章节内容XPath:", anchor="center", )
-        self.label.place(x=0, y=162, width=94, height=30)
+        label = ttk.Label(self, text="章节内容XPath:", anchor="center", )
+        label.place(x=0, y=162, width=94, height=30)
         self.entry_chapter_content_xpath = ttk.Entry(self)
         self.entry_chapter_content_xpath.place(x=96, y=162, width=162, height=30)
 
+        label = ttk.Label(self, text="小说保存路径:", anchor="center", )
+        label.place(x=0, y=194, width=94, height=30)
+        self.entry_novel_file_path = ttk.Entry(self)
+        self.entry_novel_file_path.place(x=96, y=194, width=162, height=30)
 
-        self.label = ttk.Label(self, text="下载线程数:", anchor="center", )
-        self.label.place(x=0, y=194, width=94, height=30)
+        label = ttk.Label(self, text="下载线程数:", anchor="center", )
+        label.place(x=0, y=226, width=94, height=30)
         self.entry_concurrent_requests = ttk.Entry(self)
-        self.entry_concurrent_requests.place(x=96, y=194, width=103, height=30)
+        self.entry_concurrent_requests.place(x=96, y=226, width=103, height=30)
 
         self.download_button = ttk.Button(self, text="开始下载", command=self.download_novel)
-        self.download_button.place(x=200, y=194, width=60, height=30)
-
-        self.label = ttk.Label(self, text="保存配置:", anchor="center", )
-        self.label.place(x=0, y=226, width=94, height=30)
-        # 添加是否保存配置的下拉菜单
-        self.cb = ttk.Combobox(self, state="readonly", values=("是", "否"))
-        self.cb.set("否")  # 设置默认值为"否"
-        self.cb.place(x=96, y=227, width=43, height=28)
-
-        # 根据下拉菜单选择，更新按钮状态
-        def on_combobox_select(event):
-            selection = self.cb.get()
-            if selection == "否":
-                self.save_config_button.state(['disabled'])  # 置灰
-            else:
-                self.save_config_button.state(['!disabled'])  # 可用
-
-        self.cb.bind("<<ComboboxSelected>>", on_combobox_select)  # 绑定事件处理
-
-        self.save_config_button = ttk.Button(self, text="导出配置", command=self.save_config)
-        self.save_config_button.place(x=140, y=226, width=60, height=30)
-        self.save_config_button.state(['disabled'])  # 初始化为置灰状态
-
-        self.import_config_button = ttk.Button(self, text="导入配置", command=self.import_config)
-        self.import_config_button.place(x=200, y=226, width=60, height=30)
+        self.download_button.place(x=200, y=226, width=60, height=30)
 
     def update_progress(self):
         """根据完成的任务更新进度条"""
@@ -97,7 +75,6 @@ class ZickNovel(tk.Tk):
         self.progress_var.set(self.completed_tasks / self.total_tasks * 100)
 
     def download_novel(self):
-        global novel_home_url, novel_list_url, novel_name_xpath, chapter_title_xpath, chapter_url_xpath, chapter_content_xpath, novel_file_path_var, CONCURRENT_REQUESTS
         # 获取用户输入的值
         novel_home_url = self.entry_novel_home_url.get()  # 小说主页变量
         novel_list_url = self.entry_novel_list_url.get()  # 小说列表页变量
@@ -105,6 +82,7 @@ class ZickNovel(tk.Tk):
         chapter_title_xpath = self.entry_chapter_title_xpath.get()  # 小说章节名称变量
         chapter_url_xpath = self.entry_chapter_url_xpath.get()  # 小说章节网址名称变量
         chapter_content_xpath = self.entry_chapter_content_xpath.get()  # 小说章节内容变量
+        novel_file_path_var = self.entry_novel_file_path.get()  # 小说TXT文档保存路径变量
         try:
             CONCURRENT_REQUESTS = int(self.entry_concurrent_requests.get())
             if CONCURRENT_REQUESTS <= 0:
@@ -208,10 +186,8 @@ class ZickNovel(tk.Tk):
         chapter_title = [chapter_title for chapter_title in tree.xpath(chapter_title_xpath)]  # 为了后续每个章节名称对应正确的网址，新建列表
         chapter_url = [novel_home_url + chapter_url for chapter_url in tree.xpath(chapter_url_xpath)]
         dic1 = dict(zip(chapter_title, chapter_url))
-
         # 设置 total_tasks
         self.total_tasks = len(chapter_title)
-
         # 定义下载章节内容的函数
         def download_chapter(chapter_info):
             title, url = chapter_info
@@ -224,7 +200,6 @@ class ZickNovel(tk.Tk):
             except Exception as e:
                 print(f"下载章节《{title}》时出错：{e}")
                 return title, None
-
         self.update_progress()  # 更新进度条
         # 使用线程池进行并发下载，并收集结果
         chapters_content = []
@@ -251,6 +226,7 @@ class ZickNovel(tk.Tk):
                 if contents:
                     chapters_content.append((title, contents))
                     self.update_queue.put(1)  # 下载完成，通知主线程更新进度
+
         # 提取章节标题中的数字，假设数字位于"第"和"章"之间
         def chapter_number(title):
             match = re.search(r'\d+', title)
@@ -269,86 +245,7 @@ class ZickNovel(tk.Tk):
 
         print(f"小说《{novel_name}》的所有章节内容已成功保存至 {novel_file_path}")
 
-    def save_config_to_file(self, config_data, file_path):
-        """保存配置到指定路径的INI文件中"""
-        config_parser = configparser.ConfigParser()
-        # 添加节
-        config_parser.add_section('ZickNovelConfig')
-        # 写入配置项
-        for key, value in config_data.items():
-            config_parser.set('ZickNovelConfig', key, value)
-        # 写入INI文件，直接使用用户选择的file_path
-        with open(file_path, 'w', encoding='utf-8') as configfile:
-            config_parser.write(configfile)
-
-    def save_config(self):
-        if messagebox.askyesno("保存配置", "是否导出当前配置？"):
-            if any(entry.get() == "" for entry in
-                   [self.entry_novel_home_url, self.entry_novel_name_xpath, self.entry_chapter_title_xpath,
-                    self.entry_chapter_url_xpath, self.entry_chapter_content_xpath, self.entry_concurrent_requests]):
-                messagebox.showerror("错误", "配置必填项未输入，请检查！")
-                return  # 如果有必填项为空，则不执行保存操作
-
-            # 所有必填项都有值，继续保存配置
-            config_data = {
-                "novel_home_url": self.entry_novel_home_url.get(),
-                "novel_name_xpath": self.entry_novel_name_xpath.get(),
-                "chapter_title_xpath": self.entry_chapter_title_xpath.get(),
-                "chapter_url_xpath": self.entry_chapter_url_xpath.get(),
-                "chapter_content_xpath": self.entry_chapter_content_xpath.get(),
-                "concurrent_requests": self.entry_concurrent_requests.get()
-            }
-            # 弹出保存文件对话框让用户选择保存路径并命名INI文件
-            file_path = filedialog.asksaveasfilename(title="保存配置文件",
-                                                     defaultextension=".ini",  # 默认文件扩展名为.ini
-                                                     filetypes=[("INI Files", "*.ini")])  # 限制文件类型为INI
-
-            # 检查用户是否选择了文件路径
-            if file_path:
-                # 调用save_config_to_file方法保存配置
-                try:
-                    self.save_config_to_file(config_data=config_data, file_path=file_path)
-                    messagebox.showinfo("成功", f"配置已成功保存至{file_path}")
-                except Exception as e:
-                    messagebox.showerror("保存失败", f"保存配置文件时发生错误：{e}")
-            else:
-                messagebox.showinfo("操作取消", "未选择文件路径，保存操作已取消。")
-
-    def import_config(self):
-        """导入配置文件并填充到Entry组件中"""
-        ini_file_path = filedialog.askopenfilename(title="选择INI配置文件", filetypes=[("INI Files", "*.ini")])
-        if ini_file_path:
-            config_parser = configparser.ConfigParser()
-            config_parser.read(ini_file_path)
-
-            # 假设配置都在[ZickNovelConfig]section中
-            if 'ZickNovelConfig' in config_parser:
-                # 获取配置值并填充到Entry组件
-                self.entry_novel_home_url.delete(0, tk.END)
-                self.entry_novel_home_url.insert(tk.END, config_parser['ZickNovelConfig'].get('novel_home_url', ''))
-
-                self.entry_novel_list_url.delete(0, tk.END)  # 确保此Entry组件在你的GUI中已定义
-                self.entry_novel_list_url.insert(tk.END, config_parser['ZickNovelConfig'].get('novel_list_url', ''))  # 假设novel_list_url也在配置中
-
-                self.entry_novel_name_xpath.delete(0, tk.END)
-                self.entry_novel_name_xpath.insert(tk.END, config_parser['ZickNovelConfig'].get('novel_name_xpath', ''))
-
-                self.entry_chapter_title_xpath.delete(0, tk.END)
-                self.entry_chapter_title_xpath.insert(tk.END, config_parser['ZickNovelConfig'].get('chapter_title_xpath', ''))
-
-                self.entry_chapter_url_xpath.delete(0, tk.END)
-                self.entry_chapter_url_xpath.insert(tk.END, config_parser['ZickNovelConfig'].get('chapter_url_xpath', ''))
-
-                self.entry_chapter_content_xpath.delete(0, tk.END)
-                self.entry_chapter_content_xpath.insert(tk.END, config_parser['ZickNovelConfig'].get('chapter_content_xpath', ''))
-
-                self.entry_concurrent_requests.delete(0, tk.END)
-                self.entry_concurrent_requests.insert(tk.END, config_parser['ZickNovelConfig'].get('concurrent_requests', ''))
-
-                messagebox.showinfo("成功", "配置已成功导入。")
-            else:
-                messagebox.showerror("错误", "INI文件中未找到[ZickNovelConfig]配置。")
 
 if __name__ == "__main__":
-    app = ZickNovel()
+    app = DownloadProgressbar()
     app.mainloop()
