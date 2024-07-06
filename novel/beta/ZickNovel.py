@@ -1,10 +1,11 @@
 import concurrent.futures
+import os
 import requests
 from lxml import etree
 import re
 import random
 import tkinter as tk
-from tkinter import messagebox, ttk, filedialog
+from tkinter import messagebox, ttk, filedialog, simpledialog
 import configparser
 import queue
 import threading
@@ -27,6 +28,10 @@ class ZickNovel(tk.Tk):
         self.completed_tasks = 0  # 追踪完成的任务数
         self.update_queue = queue.Queue()  # 创建队列用于跨线程通信
         self.queue_monitor_id = None  # 用于存储after的返回ID以便取消
+        self.booksource_file_name = "BookSource.ini"
+        self.booksource_parser = configparser.ConfigParser()
+        self.booksource_parser.read('BookSource.ini')  # 读取配置文件
+
     def widget(self):
         self.label = ttk.Label(self, text="小说主页链接:", anchor="center", )
         self.label.place(x=0, y=2, width=94, height=30)
@@ -58,38 +63,25 @@ class ZickNovel(tk.Tk):
         self.entry_chapter_content_xpath = ttk.Entry(self)
         self.entry_chapter_content_xpath.place(x=96, y=162, width=162, height=30)
 
-
         self.label = ttk.Label(self, text="下载线程数:", anchor="center", )
         self.label.place(x=0, y=194, width=94, height=30)
         self.entry_concurrent_requests = ttk.Entry(self)
-        self.entry_concurrent_requests.place(x=96, y=194, width=103, height=30)
+        self.entry_concurrent_requests.place(x=96, y=194, width=102, height=30)
 
         self.download_button = ttk.Button(self, text="开始下载", command=self.start_download_thread)
-        self.download_button.place(x=200, y=194, width=60, height=30)
+        self.download_button.place(x=199, y=194, width=60, height=30)
 
-        self.label = ttk.Label(self, text="保存配置:", anchor="center", )
-        self.label.place(x=0, y=226, width=94, height=30)
-        # 添加是否保存配置的下拉菜单
-        self.cb = ttk.Combobox(self, state="readonly", values=("是", "否"))
-        self.cb.set("否")  # 设置默认值为"否"
-        self.cb.place(x=96, y=227, width=43, height=28)
+        self.save_booksource_button = ttk.Button(self, text="导出书源", command=self.save_booksource)
+        self.save_booksource_button.place(x=0, y=226, width=60, height=30)
 
-        # 根据下拉菜单选择，更新按钮状态
-        def on_combobox_select(event):
-            selection = self.cb.get()
-            if selection == "否":
-                self.save_config_button.state(['disabled'])  # 置灰
-            else:
-                self.save_config_button.state(['!disabled'])  # 可用
+        self.import_booksource_button = ttk.Button(self, text="导入书源", command=self.import_booksource)
+        self.import_booksource_button.place(x=60, y=226, width=60, height=30)
 
-        self.cb.bind("<<ComboboxSelected>>", on_combobox_select)  # 绑定事件处理
+        self.booksource_choose = ttk.Combobox(self, state="readonly")
+        self.booksource_choose.set("------书源列表------")
+        self.booksource_choose.bind("<<ComboboxSelected>>", self.update_entries_from_section)
+        self.booksource_choose.place(x=121, y=227, width=137, height=28)
 
-        self.save_config_button = ttk.Button(self, text="导出配置", command=self.save_config)
-        self.save_config_button.place(x=140, y=226, width=60, height=30)
-        self.save_config_button.state(['disabled'])  # 初始化为置灰状态
-
-        self.import_config_button = ttk.Button(self, text="导入配置", command=self.import_config)
-        self.import_config_button.place(x=200, y=226, width=60, height=30)
 
     def monitor_queue_for_updates(self):
         """监控队列并在主线程更新进度条"""
@@ -111,7 +103,6 @@ class ZickNovel(tk.Tk):
         threading.Thread(target=self.download_novel).start()
 
     def download_novel(self):
-
         # 获取用户输入的值
         novel_home_url = self.entry_novel_home_url.get()  # 小说主页变量
         novel_list_url = self.entry_novel_list_url.get()  # 小说列表页变量
@@ -217,6 +208,7 @@ class ZickNovel(tk.Tk):
         tree = etree.HTML(response)
         # 获取小说名称并去除符号
         novel_name = tree.xpath(novel_name_xpath)[0].strip()
+
         # 弹出保存文件对话框让用户选择保存位置和文件名
         novel_file_path = filedialog.asksaveasfilename(
             defaultextension=".txt",  # 设置默认文件扩展名为.txt
@@ -266,10 +258,6 @@ class ZickNovel(tk.Tk):
                     self.update_queue.put(1)  # 下载完成，向队列发送信号
                     chapters_content.append((title, contents, url))
 
-        # 下载完成后，恢复按钮状态和文本
-        self.download_button.config(state=tk.NORMAL, text="开始下载")
-        self.download_button.update_idletasks()  # 更新UI
-
         # 检查更新队列
         self.monitor_queue_for_updates()
 
@@ -284,30 +272,48 @@ class ZickNovel(tk.Tk):
                     novel_file.write(content + "\n")
                 novel_file.write("-" * 50 + "\n")
 
+        self.download_button.config(state=tk.NORMAL, text="开始下载")  # 下载完成后，恢复按钮状态和文本
+        self.download_button.update_idletasks()
+        self.after(3000, lambda: self.progress_var.set(0))  # 延迟3秒后重置进度条
+        self.completed_tasks = 0
         print(f"小说《{novel_name}》的所有章节内容已成功保存至 {novel_file_path}")
 
-    def save_config_to_file(self, config_data, file_path):
-        """保存配置到指定路径的INI文件中"""
-        config_parser = configparser.ConfigParser()
-        # 添加节
-        config_parser.add_section('ZickNovelConfig')
-        # 写入配置项
-        for key, value in config_data.items():
-            config_parser.set('ZickNovelConfig', key, value)
-        # 写入INI文件，直接使用用户选择的file_path
-        with open(file_path, 'w', encoding='utf-8') as configfile:
-            config_parser.write(configfile)
+    def save_booksource_to_file(self, booksource_section, booksource_data):
+        """保存书源配置到指定的INI文件中"""
+        booksource_parser = configparser.ConfigParser()
 
-    def save_config(self):
-        if messagebox.askyesno("保存配置", "是否导出当前配置？"):
+        # 读取现有配置文件，如果存在的话
+        if os.path.exists(self.booksource_file_name):
+            booksource_parser.read(self.booksource_file_name)
+
+        # 如果节不存在则添加，否则更新
+        if not booksource_parser.has_section(booksource_section):
+            booksource_parser.add_section(booksource_section)
+
+        # 更新配置项
+        for key, value in booksource_data.items():
+            booksource_parser.set(booksource_section, key, value)
+
+        # 写入INI文件
+        with open(self.booksource_file_name, 'w', encoding='utf-8') as booksourcefile:
+            booksource_parser.write(booksourcefile)
+
+    def save_booksource(self):
+        if messagebox.askyesno("导出书源", "是否导出当前书源？"):
             if any(entry.get() == "" for entry in
                    [self.entry_novel_home_url, self.entry_novel_name_xpath, self.entry_chapter_title_xpath,
                     self.entry_chapter_url_xpath, self.entry_chapter_content_xpath, self.entry_concurrent_requests]):
-                messagebox.showerror("错误", "配置必填项未输入，请检查！")
+                messagebox.showerror("错误", "书源必填项未输入，请检查！")
                 return  # 如果有必填项为空，则不执行保存操作
 
+            # 获取配置文件中的节名称
+            booksource_section = simpledialog.askstring("小说网站名称", "请输入该小说网站名称:")
+            if not booksource_section:
+                messagebox.showerror("错误", "小说网站名称不能为空！")
+                return
+
             # 所有必填项都有值，继续保存配置
-            config_data = {
+            booksource_data = {
                 "novel_home_url": self.entry_novel_home_url.get(),
                 "novel_name_xpath": self.entry_novel_name_xpath.get(),
                 "chapter_title_xpath": self.entry_chapter_title_xpath.get(),
@@ -315,56 +321,45 @@ class ZickNovel(tk.Tk):
                 "chapter_content_xpath": self.entry_chapter_content_xpath.get(),
                 "concurrent_requests": self.entry_concurrent_requests.get()
             }
-            # 弹出保存文件对话框让用户选择保存路径并命名INI文件
-            file_path = filedialog.asksaveasfilename(title="保存配置文件",
-                                                     defaultextension=".ini",  # 默认文件扩展名为.ini
-                                                     filetypes=[("INI Files", "*.ini")])  # 限制文件类型为INI
 
-            # 检查用户是否选择了文件路径
-            if file_path:
-                # 调用save_config_to_file方法保存配置
-                try:
-                    self.save_config_to_file(config_data=config_data, file_path=file_path)
-                    messagebox.showinfo("成功", f"配置已成功保存至{file_path}")
-                except Exception as e:
-                    messagebox.showerror("保存失败", f"保存配置文件时发生错误：{e}")
-            else:
-                messagebox.showinfo("操作取消", "未选择文件路径，保存操作已取消。")
+            # 调用save_booksource_to_file方法保存配置
+            try:
+                self.save_booksource_to_file(booksource_section, booksource_data)
+                messagebox.showinfo("成功", f"书源已成功导出至{os.getcwd()}/{self.booksource_file_name}")
+            except Exception as e:
+                messagebox.showerror("书源失败", f"导出书源文件时发生错误：{e}")
 
-    def import_config(self):
-        """导入配置文件并填充到Entry组件中"""
-        ini_file_path = filedialog.askopenfilename(title="选择INI配置文件", filetypes=[("INI Files", "*.ini")])
-        if ini_file_path:
-            config_parser = configparser.ConfigParser()
-            config_parser.read(ini_file_path)
+    def import_booksource(self):
+        self.booksource_file_name = 'BookSource.ini'
+        self.booksource_parser = configparser.ConfigParser()
+        self.booksource_parser.read(self.booksource_file_name)
 
-            # 假设配置都在[ZickNovelConfig]section中
-            if 'ZickNovelConfig' in config_parser:
-                # 获取配置值并填充到Entry组件
-                self.entry_novel_home_url.delete(0, tk.END)
-                self.entry_novel_home_url.insert(tk.END, config_parser['ZickNovelConfig'].get('novel_home_url', ''))
+        # 获取所有section，然后在前面添加默认文本
+        self.booksource_section = ['------书源列表------'] + self.booksource_parser.sections()
+        self.booksource_choose['values'] = self.booksource_section
+        if self.booksource_section:
+            self.booksource_choose.current(0)  # 选择第一个section
 
-                self.entry_novel_list_url.delete(0, tk.END)  # 确保此Entry组件在你的GUI中已定义
-                self.entry_novel_list_url.insert(tk.END, config_parser['ZickNovelConfig'].get('novel_list_url', ''))  # 假设novel_list_url也在配置中
+    def update_entries_from_section(self,event):
+        selected_section = self.booksource_choose.get()
+        if selected_section:
+            self.entry_novel_home_url.delete(0, tk.END)
+            self.entry_novel_home_url.insert(0, self.booksource_parser[selected_section].get('novel_home_url', ''))
 
-                self.entry_novel_name_xpath.delete(0, tk.END)
-                self.entry_novel_name_xpath.insert(tk.END, config_parser['ZickNovelConfig'].get('novel_name_xpath', ''))
+            self.entry_novel_name_xpath.delete(0, tk.END)
+            self.entry_novel_name_xpath.insert(0, self.booksource_parser[selected_section].get('novel_name_xpath', ''))
 
-                self.entry_chapter_title_xpath.delete(0, tk.END)
-                self.entry_chapter_title_xpath.insert(tk.END, config_parser['ZickNovelConfig'].get('chapter_title_xpath', ''))
+            self.entry_chapter_title_xpath.delete(0, tk.END)
+            self.entry_chapter_title_xpath.insert(0, self.booksource_parser[selected_section].get('chapter_title_xpath', ''))
 
-                self.entry_chapter_url_xpath.delete(0, tk.END)
-                self.entry_chapter_url_xpath.insert(tk.END, config_parser['ZickNovelConfig'].get('chapter_url_xpath', ''))
+            self.entry_chapter_url_xpath.delete(0, tk.END)
+            self.entry_chapter_url_xpath.insert(0, self.booksource_parser[selected_section].get('chapter_url_xpath', ''))
 
-                self.entry_chapter_content_xpath.delete(0, tk.END)
-                self.entry_chapter_content_xpath.insert(tk.END, config_parser['ZickNovelConfig'].get('chapter_content_xpath', ''))
+            self.entry_chapter_content_xpath.delete(0, tk.END)
+            self.entry_chapter_content_xpath.insert(0, self.booksource_parser[selected_section].get('chapter_content_xpath', ''))
 
-                self.entry_concurrent_requests.delete(0, tk.END)
-                self.entry_concurrent_requests.insert(tk.END, config_parser['ZickNovelConfig'].get('concurrent_requests', ''))
-
-                messagebox.showinfo("成功", "配置已成功导入。")
-            else:
-                messagebox.showerror("错误", "INI文件中未找到[ZickNovelConfig]配置。")
+            self.entry_concurrent_requests.delete(0, tk.END)
+            self.entry_concurrent_requests.insert(0, self.booksource_parser[selected_section].get('concurrent_requests', ''))
 
 if __name__ == "__main__":
     app = ZickNovel()

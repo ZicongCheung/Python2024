@@ -4,7 +4,7 @@ from lxml import etree
 import re
 import random
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, ttk, filedialog
 import queue
 import threading
 
@@ -13,7 +13,7 @@ class DownloadProgressbar(tk.Tk):
         super().__init__()
         self.title("ZickNovel")
         width = 260
-        height = 322
+        height = 262
         screenwidth = self.winfo_screenwidth()
         screenheight = self.winfo_screenheight()
         geometry = f'{width}x{height}+{(screenwidth - width) // 2}+{(screenheight - height) // 2}'
@@ -22,7 +22,7 @@ class DownloadProgressbar(tk.Tk):
         self.widget()
         self.progress_var = tk.DoubleVar()
         self.progressbar = ttk.Progressbar(self, variable=self.progress_var)
-        self.progressbar.place(x=2, y=290, width=256, height=30)
+        self.progressbar.place(x=2, y=230, width=256, height=30)
         self.completed_tasks = 0  # 追踪完成的任务数
         self.update_queue = queue.Queue()  # 创建队列用于跨线程通信
         self.queue_monitor_id = None  # 用于存储after的返回ID以便取消
@@ -58,18 +58,13 @@ class DownloadProgressbar(tk.Tk):
         self.entry_chapter_content_xpath = ttk.Entry(self)
         self.entry_chapter_content_xpath.place(x=96, y=162, width=162, height=30)
 
-        label = ttk.Label(self, text="小说保存路径:", anchor="center", )
-        label.place(x=0, y=194, width=94, height=30)
-        self.entry_novel_file_path = ttk.Entry(self)
-        self.entry_novel_file_path.place(x=96, y=194, width=162, height=30)
-
         label = ttk.Label(self, text="下载线程数:", anchor="center", )
-        label.place(x=0, y=226, width=94, height=30)
+        label.place(x=0, y=194, width=94, height=30)
         self.entry_concurrent_requests = ttk.Entry(self)
-        self.entry_concurrent_requests.place(x=96, y=226, width=103, height=30)
+        self.entry_concurrent_requests.place(x=96, y=194, width=103, height=30)
 
         self.download_button = ttk.Button(self, text="开始下载", command=self.start_download_thread)
-        self.download_button.place(x=200, y=226, width=60, height=30)
+        self.download_button.place(x=200, y=194, width=60, height=30)
 
     def monitor_queue_for_updates(self):
         """监控队列并在主线程更新进度条"""
@@ -98,7 +93,6 @@ class DownloadProgressbar(tk.Tk):
         chapter_title_xpath = self.entry_chapter_title_xpath.get()  # 小说章节名称变量
         chapter_url_xpath = self.entry_chapter_url_xpath.get()  # 小说章节网址名称变量
         chapter_content_xpath = self.entry_chapter_content_xpath.get()  # 小说章节内容变量
-        novel_file_path_var = self.entry_novel_file_path.get()  # 小说TXT文档保存路径变量
         try:
             CONCURRENT_REQUESTS = int(self.entry_concurrent_requests.get())
             if CONCURRENT_REQUESTS <= 0:
@@ -197,7 +191,21 @@ class DownloadProgressbar(tk.Tk):
         tree = etree.HTML(response)
         # 获取小说名称并去除符号
         novel_name = tree.xpath(novel_name_xpath)[0].strip()
-        novel_file_path = f"{novel_file_path_var}{novel_name}.txt"
+
+        # 弹出保存文件对话框让用户选择保存位置和文件名
+        novel_file_path = filedialog.asksaveasfilename(
+            defaultextension=".txt",  # 设置默认文件扩展名为.txt
+            filetypes=[("Text Files", "*.txt")],  # 限制文件类型为txt
+            initialfile=f"{novel_name}.txt",  # 设置默认文件名为novel_name
+            title="选择保存位置"
+        )
+        if not novel_file_path:  # 如果用户取消了选择
+            return
+
+        # 在开始下载前，更改按钮状态和文本
+        self.download_button.config(state=tk.DISABLED, text="正在下载")
+        self.download_button.update_idletasks()
+
         # 获取章节名称和章节网址
         chapter_title = [chapter_title for chapter_title in tree.xpath(chapter_title_xpath)]  # 为了后续每个章节名称对应正确的网址，新建列表
         chapter_url = [novel_home_url + chapter_url for chapter_url in tree.xpath(chapter_url_xpath)]
@@ -246,7 +254,11 @@ class DownloadProgressbar(tk.Tk):
                 for content in contents:
                     novel_file.write(content + "\n")
                 novel_file.write("-" * 50 + "\n")
-
+        # 下载完成后，恢复按钮状态和文本
+        self.download_button.config(state=tk.NORMAL, text="开始下载")
+        self.download_button.update_idletasks()  # 更新UI
+        self.after(3000, lambda: self.progress_var.set(0))
+        self.completed_tasks = 0
         print(f"小说《{novel_name}》的所有章节内容已成功保存至 {novel_file_path}")
 
 
