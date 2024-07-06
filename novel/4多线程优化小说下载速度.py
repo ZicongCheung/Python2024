@@ -27,10 +27,10 @@ def download_chapter(chapter_info):
         tree = etree.HTML(response)
         contents = tree.xpath('//div[@id="content"]/text()')
         contents = [content.strip() for content in contents if content.strip()]
-        return title, contents
+        return title, contents, url
     except Exception as e:
         print(f"下载章节《{title}》时出错：{e}")
-        return title, None
+        return title, None, url
 
 # 使用线程池进行并发下载，并收集结果
 chapters_content = []
@@ -38,21 +38,16 @@ chapters_content = []
 with concurrent.futures.ThreadPoolExecutor(max_workers=CONCURRENT_REQUESTS) as executor:
     futures = {executor.submit(download_chapter, (title, url)) for title, url in dic1.items()}
     for future in concurrent.futures.as_completed(futures):
-        title, contents = future.result()
+        title, contents, url = future.result()
         if contents:
-            chapters_content.append((title, contents))
+            chapters_content.append((title, contents, url))
 
-# 提取章节标题中的数字，假设数字位于"第"和"章"之间
-def chapter_number(title):
-    match = re.search(r'\d+', title)
-    return int(match.group()) if match else float('inf')
-
-# 按章节标题中提取的数字大小进行排序，确保章节顺序正确
-chapters_content.sort(key=lambda x: chapter_number(x[0]))
+# 按URL尾部数字大小进行排序，确保章节顺序正确
+chapters_content.sort(key=lambda x: int(re.search(r'\d+', x[2].split('/')[-1]).group()))
 
 # 将排序后的章节内容写入文件
 with open(novel_file_path, "w", encoding="utf-8") as novel_file:
-    for title, contents in chapters_content:
+    for title, contents, url in chapters_content:
         novel_file.write(f"{title}\n")
         for content in contents:
             novel_file.write(content + "\n")

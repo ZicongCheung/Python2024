@@ -6,8 +6,9 @@ import random
 import tkinter as tk
 from tkinter import messagebox, filedialog
 
-def download_novel():
+def download_novel(download_button):
     global novel_home_url, novel_list_url, novel_name_xpath, chapter_title_xpath, chapter_url_xpath, chapter_content_xpath, novel_file_path, CONCURRENT_REQUESTS
+
     # 获取用户输入的值
     novel_home_url = entry_novel_home_url.get()  # 小说主页变量
     novel_list_url = entry_novel_list_url.get()  # 小说列表页变量
@@ -122,6 +123,11 @@ def download_novel():
     )
     if not novel_file_path:  # 如果用户取消了选择
         return
+
+    # 在开始下载前，更改按钮状态和文本
+    download_button.config(state=tk.DISABLED, text="正在下载")
+    download_button.update_idletasks()  # 更安全地更新UI，避免阻塞主循环
+
     # 获取章节名称和章节网址
     chapter_title = [chapter_title for chapter_title in tree.xpath(chapter_title_xpath)]  # 为了后续每个章节名称对应正确的网址，新建列表
     chapter_url = [novel_home_url + chapter_url for chapter_url in tree.xpath(chapter_url_xpath)]
@@ -135,10 +141,10 @@ def download_novel():
             tree = etree.HTML(response)
             contents = tree.xpath(chapter_content_xpath)
             contents = [content.strip() for content in contents if content.strip()]
-            return title, contents
+            return title, contents, url
         except Exception as e:
             print(f"下载章节《{title}》时出错：{e}")
-            return title, None
+            return title, None, url
 
     # 使用线程池进行并发下载，并收集结果
     chapters_content = []
@@ -146,21 +152,20 @@ def download_novel():
     with concurrent.futures.ThreadPoolExecutor(max_workers=CONCURRENT_REQUESTS) as executor:
         futures = {executor.submit(download_chapter, (title, url)) for title, url in dic1.items()}
         for future in concurrent.futures.as_completed(futures):
-            title, contents = future.result()
+            title, contents, url = future.result()
             if contents:
-                chapters_content.append((title, contents))
+                chapters_content.append((title, contents, url))
 
-    # 提取章节标题中的数字，假设数字位于"第"和"章"之间
-    def chapter_number(title):
-        match = re.search(r'\d+', title)
-        return int(match.group()) if match else float('inf')
+    # 下载完成后，恢复按钮状态和文本
+    download_button.config(state=tk.NORMAL, text="开始下载")
+    download_button.update_idletasks()  # 更新UI
 
-    # 按章节标题中提取的数字大小进行排序，确保章节顺序正确
-    chapters_content.sort(key=lambda x: chapter_number(x[0]))
+    # 按URL尾部数字大小进行排序，确保章节顺序正确
+    chapters_content.sort(key=lambda x: int(re.search(r'\d+', x[2].split('/')[-1]).group()))
 
     # 将排序后的章节内容写入文件
     with open(novel_file_path, "w", encoding="utf-8") as novel_file:
-        for title, contents in chapters_content:
+        for title, contents, url in chapters_content:
             novel_file.write(f"{title}\n")
             for content in contents:
                 novel_file.write(content + "\n")
@@ -169,7 +174,7 @@ def download_novel():
     print(f"小说《{novel_name}》的所有章节内容已成功保存至 {novel_file_path}")
 
 def create_gui():
-    global entry_novel_home_url, entry_novel_list_url, entry_novel_name_xpath, entry_chapter_title_xpath, entry_chapter_url_xpath, entry_chapter_content_xpath, entry_novel_file_path, entry_concurrent_requests
+    global entry_novel_home_url, entry_novel_list_url, entry_novel_name_xpath, entry_chapter_title_xpath, entry_chapter_url_xpath, entry_chapter_content_xpath, entry_concurrent_requests
 
     root = tk.Tk()
     root.title("ZickNovel")
@@ -198,16 +203,13 @@ def create_gui():
     entry_chapter_content_xpath = tk.Entry(root)
     entry_chapter_content_xpath.pack()
 
-    tk.Label(root, text="小说保存路径:").pack()
-    entry_novel_file_path = tk.Entry(root)
-    entry_novel_file_path.pack()
-
     tk.Label(root, text="下载线程数:").pack()
     entry_concurrent_requests = tk.Entry(root)
     entry_concurrent_requests.pack()
 
-    download_button = tk.Button(root, text="开始下载", command=download_novel)
+    download_button = tk.Button(root, text="开始下载")
     download_button.pack()
+    download_button.config(command=lambda: download_novel(download_button))  # 传递download_button给download_novel
 
     root.mainloop()
 
