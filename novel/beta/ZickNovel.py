@@ -9,7 +9,7 @@ from tkinter import messagebox, ttk, filedialog, simpledialog
 import configparser
 import queue
 import threading
-
+import io
 class ZickNovel(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -30,7 +30,6 @@ class ZickNovel(tk.Tk):
         self.queue_monitor_id = None  # 用于存储after的返回ID以便取消
         self.booksource_file_name = "BookSource.ini"
         self.booksource_parser = configparser.ConfigParser()
-        self.booksource_parser.read('BookSource.ini')  # 读取配置文件
 
     def widget(self):
         self.label = ttk.Label(self, text="小说主页链接:", anchor="center", )
@@ -280,23 +279,22 @@ class ZickNovel(tk.Tk):
 
     def save_booksource_to_file(self, booksource_section, booksource_data):
         """保存书源配置到指定的INI文件中"""
-        booksource_parser = configparser.ConfigParser()
-
         # 读取现有配置文件，如果存在的话
         if os.path.exists(self.booksource_file_name):
-            booksource_parser.read(self.booksource_file_name)
+            with io.open(self.booksource_file_name, 'r', encoding='utf-8') as file:
+                self.booksource_parser.read_file(file)
 
         # 如果节不存在则添加，否则更新
-        if not booksource_parser.has_section(booksource_section):
-            booksource_parser.add_section(booksource_section)
+        if not self.booksource_parser.has_section(booksource_section):
+            self.booksource_parser.add_section(booksource_section)
 
         # 更新配置项
         for key, value in booksource_data.items():
-            booksource_parser.set(booksource_section, key, value)
+            self.booksource_parser.set(booksource_section, key, value)
 
         # 写入INI文件
-        with open(self.booksource_file_name, 'w', encoding='utf-8') as booksourcefile:
-            booksource_parser.write(booksourcefile)
+        with io.open(self.booksource_file_name, 'w', encoding='utf-8') as booksourcefile:
+            self.booksource_parser.write(booksourcefile)
 
     def save_booksource(self):
         if messagebox.askyesno("导出书源", "是否导出当前书源？"):
@@ -330,9 +328,10 @@ class ZickNovel(tk.Tk):
                 messagebox.showerror("书源失败", f"导出书源文件时发生错误：{e}")
 
     def import_booksource(self):
-        self.booksource_file_name = 'BookSource.ini'
+        # 读取现有配置文件
         self.booksource_parser = configparser.ConfigParser()
-        self.booksource_parser.read(self.booksource_file_name)
+        with io.open(self.booksource_file_name, 'r', encoding='utf-8') as file:
+            self.booksource_parser.read_file(file)
 
         # 获取所有section，然后在前面添加默认文本
         self.booksource_section = ['------书源列表------'] + self.booksource_parser.sections()
@@ -340,26 +339,29 @@ class ZickNovel(tk.Tk):
         if self.booksource_section:
             self.booksource_choose.current(0)  # 选择第一个section
 
-    def update_entries_from_section(self,event):
+    def update_entries_from_section(self, event):
         selected_section = self.booksource_choose.get()
-        if selected_section:
-            self.entry_novel_home_url.delete(0, tk.END)
-            self.entry_novel_home_url.insert(0, self.booksource_parser[selected_section].get('novel_home_url', ''))
+        if selected_section and selected_section != '------书源列表------':
+            try:
+                self.entry_novel_home_url.delete(0, tk.END)
+                self.entry_novel_home_url.insert(0, self.booksource_parser[selected_section].get('novel_home_url', ''))
 
-            self.entry_novel_name_xpath.delete(0, tk.END)
-            self.entry_novel_name_xpath.insert(0, self.booksource_parser[selected_section].get('novel_name_xpath', ''))
+                self.entry_novel_name_xpath.delete(0, tk.END)
+                self.entry_novel_name_xpath.insert(0, self.booksource_parser[selected_section].get('novel_name_xpath', ''))
 
-            self.entry_chapter_title_xpath.delete(0, tk.END)
-            self.entry_chapter_title_xpath.insert(0, self.booksource_parser[selected_section].get('chapter_title_xpath', ''))
+                self.entry_chapter_title_xpath.delete(0, tk.END)
+                self.entry_chapter_title_xpath.insert(0, self.booksource_parser[selected_section].get('chapter_title_xpath', ''))
 
-            self.entry_chapter_url_xpath.delete(0, tk.END)
-            self.entry_chapter_url_xpath.insert(0, self.booksource_parser[selected_section].get('chapter_url_xpath', ''))
+                self.entry_chapter_url_xpath.delete(0, tk.END)
+                self.entry_chapter_url_xpath.insert(0, self.booksource_parser[selected_section].get('chapter_url_xpath', ''))
 
-            self.entry_chapter_content_xpath.delete(0, tk.END)
-            self.entry_chapter_content_xpath.insert(0, self.booksource_parser[selected_section].get('chapter_content_xpath', ''))
+                self.entry_chapter_content_xpath.delete(0, tk.END)
+                self.entry_chapter_content_xpath.insert(0, self.booksource_parser[selected_section].get('chapter_content_xpath', ''))
 
-            self.entry_concurrent_requests.delete(0, tk.END)
-            self.entry_concurrent_requests.insert(0, self.booksource_parser[selected_section].get('concurrent_requests', ''))
+                self.entry_concurrent_requests.delete(0, tk.END)
+                self.entry_concurrent_requests.insert(0, self.booksource_parser[selected_section].get('concurrent_requests', ''))
+            except KeyError as e:
+                messagebox.showerror("错误", f"无法找到指定的书源配置项：{e}")
 
 if __name__ == "__main__":
     app = ZickNovel()

@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog, filedialog
 import configparser
 import os
+import io
 
 booksource_file_name = "BookSource.ini"
 
@@ -11,7 +12,8 @@ def save_booksource_to_file(booksource_name, booksource_data):
 
     # 读取现有配置文件，如果存在的话
     if os.path.exists(booksource_file_name):
-        booksource_parser.read(booksource_file_name)
+        with io.open(booksource_file_name, 'r', encoding='utf-8') as file:
+            booksource_parser.read_file(file)
 
     # 如果节不存在则添加，否则更新
     if not booksource_parser.has_section(booksource_name):
@@ -22,9 +24,8 @@ def save_booksource_to_file(booksource_name, booksource_data):
         booksource_parser.set(booksource_name, key, value)
 
     # 写入INI文件
-    with open(booksource_file_name, 'w', encoding='utf-8') as booksourcefile:
+    with io.open(booksource_file_name, 'w', encoding='utf-8') as booksourcefile:
         booksource_parser.write(booksourcefile)
-
 
 def save_booksource():
     if messagebox.askyesno("保存配置", "是否导出当前配置？"):
