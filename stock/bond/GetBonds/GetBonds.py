@@ -11,7 +11,8 @@ class GetBonds(tk.Tk):
         self.title("GetBonds")
         self.geometry(f'200x226+{(self.winfo_screenwidth() - 200) // 2}+{(self.winfo_screenheight() - 226) // 2}')
         self.resizable(width=False, height=False)
-
+        # 隐藏最小化和最大化按钮
+        self.attributes('-toolwindow', True)
         # GitHub INI文件的raw链接
         self.url = 'https://github.com/ZicongCheung/Python2024/blob/main/stock/bond/GetBonds/bond_winning_numbers.ini?raw=true'
 
