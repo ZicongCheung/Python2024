@@ -1,21 +1,18 @@
-# 导入库
-import time
-import json
-import random
 import requests
-import pandas as pd
-from bs4 import BeautifulSoup
+import json
 
-
-headers = {
-  'host':'q.10jqka.com.cn',
-  'Referer':'http://q.10jqka.com.cn/',
-  'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3554.0 Safari/537.36',
-  'X-Requested-With':'XMLHttpRequest'
-}
-url = 'http://q.10jqka.com.cn/index/index/board/all/field/zdf/order/desc/page/%s/ajax/1/' % page_id
-res = requests.get(url,headers=headers)
-res.encoding = 'GBK'
-soup = BeautifulSoup(res.text, 'lxml')
-tr_list = soup.select('tbody tr')
-print(tr_list)
+url = 'https://data.10jqka.com.cn/ipo/kzz/'
+headers = {'user-agent':'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.71 Safari/537.36 SE 2.X MetaSr 1.0'}
+response = requests.get(url, headers=headers)
+data = json.loads(response.text)
+# 获取list中前10组数据
+bond_list = data['list']
+latest_bonds = bond_list[:10]
+# 提取bond_code, bond_name, plan_total, success_rate, number
+for bond in latest_bonds:
+    bond_code = bond['bond_code']
+    bond_name = bond['bond_name']
+    plan_total = bond['plan_total']
+    success_rate = bond['success_rate']
+    number = bond['number']
+    print(f"bond_code: {bond_code}, bond_name: {bond_name}, plan_total: {plan_total}, success_rate: {success_rate}, number: {number}")

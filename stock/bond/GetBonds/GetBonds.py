@@ -9,7 +9,7 @@ class GetBonds(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("GetBonds")
-        self.geometry(f'200x226+{(self.winfo_screenwidth() - 200) // 2}+{(self.winfo_screenheight() - 226) // 2}')
+        self.geometry(f'320x200+{(self.winfo_screenwidth() - 200) // 2}+{(self.winfo_screenheight() - 320) // 2}')
         self.resizable(width=False, height=False)
 
         # GitHub INI文件的raw链接
@@ -24,19 +24,31 @@ class GetBonds(tk.Tk):
         self.create_widgets()
 
     def create_widgets(self):
-        ttk.Label(self, text="可转债简称", anchor="center").place(x=10, y=8, width=65, height=30)
+        ttk.Label(self, text="债券简称", anchor="center").place(x=10, y=8, width=56, height=30)
 
         self.bonds_choose = ttk.Combobox(self, state="readonly")
         self.bonds_choose.set("请选择")
-        self.bonds_choose.place(x=10, y=42, width=180, height=30)
+        self.bonds_choose.place(x=10, y=42, width=100, height=30)
 
-        ttk.Label(self, text="初始配售号码", anchor="center").place(x=10, y=80, width=78, height=30)
+        ttk.Label(self, text="发行量", anchor="center").place(x=110, y=8, width=42, height=30)
+        self.circulation = ttk.Entry(self)
+        self.circulation.place(x=110, y=42, width=100, height=30)
+
+        ttk.Label(self, text="中签率", anchor="center").place(x=210, y=8, width=42, height=30)
+        self.success_rate = ttk.Entry(self)
+        self.success_rate.place(x=210, y=42, width=100, height=30)
+
+        ttk.Label(self, text="预估价格", anchor="center").place(x=10, y=80, width=56, height=30)
+        self.estimated_price = ttk.Entry(self)
+        self.estimated_price.place(x=10, y=114, width=100, height=30)
+
+        ttk.Label(self, text="初始配售号码", anchor="center").place(x=110, y=80, width=78, height=30)
 
         self.entry_start_number = ttk.Entry(self)
-        self.entry_start_number.place(x=10, y=114, width=180, height=30)
+        self.entry_start_number.place(x=110, y=114, width=200, height=30)
 
 
-        ttk.Button(self, text="查询", command=self.query).place(x=70, y=158, width=60, height=30)
+        ttk.Button(self, text="查询", command=self.query).place(x=130, y=158, width=60, height=30)
 
     def query(self):
         bond_name = self.bonds_choose.get()

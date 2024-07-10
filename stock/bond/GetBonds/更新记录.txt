@@ -1,19 +1,17 @@
 更新记录
 0709
 1.更新UI
+0711
+1.成功爬取同花顺可转债信息含债券代码、名称、发行量、中签率、中签配号
 
+
+尝试获取债券对应股票代码跳转股票页获取股票信息计算转股溢价率
 可开发债券价格预估功能
-增加刷新按钮
-https://stockpage.10jqka.com.cn/“stock_code”/
-bond_winning_numbers尝试从同花顺获取
-
-<td class="data-name">赛龙转债</td>
 
 
-http://data.10jqka.com.cn/ipo/bond/order/desc/ajax/1/free/1/
 
-https://stockpage.10jqka.com.cn/“stock_code”/
-http://data.10jqka.com.cn/ipo/bond/
 bond_winning_numbers尝试从同花顺获取
 
 https://blog.51cto.com/u_16213672/7050269
+
+https://data.10jqka.com.cn/ipo/kzz/
