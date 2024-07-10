@@ -1,3 +1,19 @@
 更新记录
 0709
 1.更新UI
+
+可开发债券价格预估功能
+增加刷新按钮
+https://stockpage.10jqka.com.cn/“stock_code”/
+bond_winning_numbers尝试从同花顺获取
+
+<td class="data-name">赛龙转债</td>
+
+
+http://data.10jqka.com.cn/ipo/bond/order/desc/ajax/1/free/1/
+
+https://stockpage.10jqka.com.cn/“stock_code”/
+http://data.10jqka.com.cn/ipo/bond/
+bond_winning_numbers尝试从同花顺获取
+
+https://blog.51cto.com/u_16213672/7050269
