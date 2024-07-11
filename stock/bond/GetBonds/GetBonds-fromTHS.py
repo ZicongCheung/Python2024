@@ -139,8 +139,8 @@ class GetBonds(tk.Tk):
             if success_rate == 0.0:
                 self.success_rate.insert(0, "中签结果未公布")
             else:
-                per_100k = success_rate * 1000
-                self.success_rate.insert(0, f"{per_100k:.2f}人/10万人")
+                per_100 = success_rate * 1000
+                self.success_rate.insert(0, f"{per_100:.2f}%")
             self.success_rate.config(state='disabled')
 
     def winning_number(self, winning_numbers, num):
@@ -149,7 +149,6 @@ class GetBonds(tk.Tk):
 
     def check_winning_range(self, start_number, count, winning_numbers):
         return [start_number + i for i in range(count) if self.winning_number(winning_numbers, start_number + i)]
-
 
 if __name__ == "__main__":
     app = GetBonds()
