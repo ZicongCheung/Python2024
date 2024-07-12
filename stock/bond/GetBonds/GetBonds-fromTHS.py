@@ -3,6 +3,7 @@ import json
 import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
+import configparser
 
 class GetBonds(tk.Tk):
     def __init__(self):
@@ -10,15 +11,16 @@ class GetBonds(tk.Tk):
         self.title("GetBonds")
         self.geometry(f'320x200+{(self.winfo_screenwidth() - 200) // 2}+{(self.winfo_screenheight() - 320) // 2}')
         self.resizable(width=False, height=False)
-
+        # 当前软件版本
+        self.software_version = "1.0.0"
         # 同花顺债券API接口
-        self.url = 'https://data.10jqka.com.cn/ipo/kzz/'
+        self.bonds_data_api = 'https://data.10jqka.com.cn/ipo/kzz/'
 
         # 初始可转债数据为空
         self.bonds_data = {}
 
-        # 启动线程加载可转债数据
-        threading.Thread(target=self.load_bonds_data_from_ThsApi, args=(self.url,)).start()
+        # 启动线程加载配置文件和可转债数据
+        threading.Thread(target=self.load_config_and_bonds_data).start()
 
         self.create_widgets()
 
@@ -74,10 +76,41 @@ class GetBonds(tk.Tk):
         else:
             messagebox.showinfo("查询结果", "未中签")
 
-    def load_bonds_data_from_ThsApi(self, url):
+    def load_config_and_bonds_data(self):
+        self.load_config()
+        self.load_bonds_data_from_ThsApi(self.bonds_data_api)
+
+    def load_config(self):
+        try:
+            config_url = 'https://github.com/ZicongCheung/Python2024/blob/main/stock/bond/GetBonds/config.ini?raw=true'
+            response = requests.get(config_url)
+            config_content = response.text
+
+            config = configparser.ConfigParser()
+            config.read_string(config_content)
+
+            maintenance_status = config.get('GetBondsConfig', 'maintenance_status', fallback='off')
+            software_version = config.get('GetBondsConfig', 'software_version', fallback='1.0.0')
+            self.bond_count = int(config.get('GetBondsConfig', 'bond_count', fallback='10'))
+
+            if maintenance_status.lower() == 'on':
+                messagebox.showinfo("维护状态", "GetBonds处于维护状态中，具体恢复时间请咨询小张")
+                self.quit()
+                return
+
+            if software_version != self.software_version:
+                messagebox.showinfo("版本过低", "当前版本过低，请升级")
+                self.quit()
+                return
+
+        except Exception as e:
+            messagebox.showerror("错误", f"加载配置文件时出错: {e}")
+            self.destroy()
+
+    def load_bonds_data_from_ThsApi(self, bonds_data_api):
         try:
             # 获取最新的可转债数据
-            latest_bonds = self.get_latest_bonds(url)
+            latest_bonds = self.get_latest_bonds(bonds_data_api)
 
             bonds_data = {}
 
@@ -114,7 +147,7 @@ class GetBonds(tk.Tk):
         response = requests.get(url, headers=headers)
         data = json.loads(response.text)
         bond_list = data['list']
-        latest_bonds = bond_list[:10]
+        latest_bonds = bond_list[:self.bond_count]
         return latest_bonds
 
     def update_bonds_choose(self):
