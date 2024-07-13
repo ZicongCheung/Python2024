@@ -70,7 +70,7 @@ class GetBonds(tk.Tk):
         winning_numbers_in_range = self.check_winning_range(start_number, count, bond_winning_numbers)
 
         if winning_numbers_in_range:
-            messagebox.showinfo("查询结果", f"恭喜中签！中签配号为: {winning_numbers_in_range}")
+            messagebox.showinfo("查询结果", f"中签啦！中签配号为: {winning_numbers_in_range}")
         else:
             messagebox.showinfo("查询结果", "未中签")
 
@@ -224,12 +224,12 @@ class GetBonds(tk.Tk):
             except StopIteration:
                 self.estimated_price.config(state='normal')
                 self.estimated_price.delete(0, tk.END)
-                self.estimated_price.insert(0, "数据暂无")
+                self.estimated_price.insert(0, "未录入溢价率…")
                 self.estimated_price.config(state='disabled')
         else:
             self.estimated_price.config(state='normal')
             self.estimated_price.delete(0, tk.END)
-            self.estimated_price.insert(0, "未录入溢价率…")
+            self.estimated_price.insert(0, "数据暂无")
             self.estimated_price.config(state='disabled')
 
     def winning_number(self, winning_numbers, num):
