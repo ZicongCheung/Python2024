@@ -2,7 +2,7 @@ import requests
 import configparser
 
 # 在 GitHub URL 末尾添加 ?raw=true 以获取原始文件链接
-url = 'https://github.com/ZicongCheung/Python2024/blob/main/stock/bond/GetBonds/bond_winning_numbers.ini?raw=true'
+url = 'https://github.com/ZicongCheung/Python2024/blob/main/stock/bond/GetBonds-fromGithubRaw/bond_winning_numbers.ini?raw=true'
 
 # 发送HTTP请求获取INI文件内容
 response = requests.get(url)

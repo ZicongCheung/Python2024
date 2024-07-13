@@ -43,7 +43,7 @@ def load_winning_numbers_from_github(url):
 
 def main():
     # 在 GitHub URL 末尾添加 ?raw=true 以获取原始文件链接
-    url = 'https://github.com/ZicongCheung/Python2024/blob/main/stock/bond/GetBonds/bond_winning_numbers.ini?raw=true'
+    url = 'https://github.com/ZicongCheung/Python2024/blob/main/stock/bond/GetBonds-fromGithubRaw/bond_winning_numbers.ini?raw=true'
 
     # 加载中签规则
     winning_numbers = load_winning_numbers_from_github(url)
