@@ -14,7 +14,7 @@ class GetBonds(tk.Tk):
         # 隐藏最小化和最大化按钮
         self.attributes('-toolwindow', True)
         # GitHub INI文件的raw链接
-        self.url = 'https://github.com/ZicongCheung/Python2024/blob/main/stock/bond/GetBonds/bond_winning_numbers.ini?raw=true'
+        self.url = 'https://github.com/ZicongCheung/Python2024/blob/main/stock/bond/GetBonds-fromGithubRaw/bond_winning_numbers.ini?raw=true'
 
         # 初始中签规则为空
         self.winning_numbers = {}
