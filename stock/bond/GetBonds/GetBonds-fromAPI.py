@@ -2,12 +2,15 @@ import requests
 import json
 import tkinter as tk
 from tkinter import ttk, messagebox
+from io import BytesIO
+from PIL import Image, ImageTk
 import threading
 import configparser
 
 class GetBonds(tk.Tk):
     def __init__(self):
         super().__init__()
+        self.load_icon()
         self.title("GetBonds")
         self.geometry(f'320x200+{(self.winfo_screenwidth() - 200) // 2}+{(self.winfo_screenheight() - 320) // 2}')
         self.resizable(width=False, height=False)
@@ -22,6 +25,18 @@ class GetBonds(tk.Tk):
         threading.Thread(target=self.load_config_and_bonds_data).start()
 
         self.create_widgets()
+
+    def load_icon(self):
+        # GiteeIconURL
+        icon_url = "https://gitee.com/ZicongCheung/Python2024/raw/main/stock/bond/GetBonds/GetBondsLogo.ico"
+        response = requests.get(icon_url)
+        if response.status_code == 200:
+            image_data = response.content
+            image = Image.open(BytesIO(image_data))
+            icon = ImageTk.PhotoImage(image)
+            self.iconphoto(False, icon)
+        else:
+            print("无法加载图标")
 
     def create_widgets(self):
         ttk.Label(self, text="债券简称", anchor="center").place(x=10, y=8, width=56, height=30)
