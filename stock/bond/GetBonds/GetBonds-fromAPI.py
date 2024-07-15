@@ -71,11 +71,17 @@ class GetBonds(tk.Tk):
             return
 
         if not start_number.isdigit():
-            messagebox.showerror("错误", "请输入有效的初始配售号码")
+            messagebox.showerror("错误", "请输入初始配售号码")
             return
 
         ths_bonds_data = self.ths_bonds_data.get(bond_name, {})
         bond_winning_numbers = ths_bonds_data.get('winning_numbers', {})
+
+        # 检查是否有中签号码
+        if not bond_winning_numbers:
+            messagebox.showinfo("提示", "当前中签结果未公布")
+            return
+
         start_number = int(start_number)
         count = 1000
 
