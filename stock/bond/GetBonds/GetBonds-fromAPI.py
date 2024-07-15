@@ -10,10 +10,10 @@ import configparser
 class GetBonds(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.load_icon()
         self.title("GetBonds")
         self.geometry(f'320x200+{(self.winfo_screenwidth() - 200) // 2}+{(self.winfo_screenheight() - 320) // 2}')
         self.resizable(width=False, height=False)
+        self.load_icon()
         # 当前软件版本
         self.software_version = "1.0.0"
 
@@ -35,8 +35,6 @@ class GetBonds(tk.Tk):
             image = Image.open(BytesIO(image_data))
             icon = ImageTk.PhotoImage(image)
             self.iconphoto(False, icon)
-        else:
-            print("无法加载图标")
 
     def create_widgets(self):
         ttk.Label(self, text="债券简称", anchor="center").place(x=10, y=8, width=56, height=30)
@@ -93,7 +91,7 @@ class GetBonds(tk.Tk):
         self.load_config()
         self.load_bonds_data_from_thsapi()
         self.load_github_bonds_data()
-        self.load_bonds_data_from_dfapi()
+        # self.load_bonds_data_from_dfapi()
 
     def load_config(self):
         try:
@@ -179,24 +177,23 @@ class GetBonds(tk.Tk):
             config.read_string(bonds_data_content)
 
             # 解析bonds_data.ini文件中的数据
-            self.bonds_premium_rate = {}
+            self.bonds_estimated_price = {}
             for section in config.sections():
-                # 将读取的字符串转换为浮点数
-                premium_rate = float(config.get(section, 'bonds_premium_rate', fallback='0'))
-                self.bonds_premium_rate[section] = premium_rate
+                estimated_price = config.get(section, 'bonds_estimated_price', fallback='0')
+                self.bonds_estimated_price[section] = estimated_price
 
         except Exception as e:
             messagebox.showerror("错误", f"加载债券数据时出错: {e}")
 
-    def load_bonds_data_from_dfapi(self):
-        try:
-            # 东方财富债券API接口
-            df_bonds_data_api = f'https://datacenter-web.eastmoney.com/api/data/v1/get?&sortColumns=PUBLIC_START_DATE,SECURITY_CODE&sortTypes=-1,-1&pageSize={self.bond_count}&pageNumber=1&reportName=RPT_BOND_CB_LIST&columns=ALL&quoteColumns=f236~10~SECURITY_CODE~TRANSFER_VALUE'
-            response = requests.get(df_bonds_data_api)
-            data = response.json()
-            self.df_bonds_data = data['result']['data']
-        except Exception as e:
-            messagebox.showerror("错误", f"加载债券数据时出错: {e}")
+    # def load_bonds_data_from_dfapi(self):
+    #     try:
+    #         # 东方财富债券API接口
+    #         df_bonds_data_api = f'https://datacenter-web.eastmoney.com/api/data/v1/get?&sortColumns=PUBLIC_START_DATE,SECURITY_CODE&sortTypes=-1,-1&pageSize={self.bond_count}&pageNumber=1&reportName=RPT_BOND_CB_LIST&columns=ALL&quoteColumns=f236~10~SECURITY_CODE~TRANSFER_VALUE'
+    #         response = requests.get(df_bonds_data_api)
+    #         data = response.json()
+    #         self.df_bonds_data = data['result']['data']
+    #     except Exception as e:
+    #         messagebox.showerror("错误", f"加载债券数据时出错: {e}")
 
     def update_bonds_choose(self):
         self.bonds_choose.set("请选择")
@@ -225,27 +222,16 @@ class GetBonds(tk.Tk):
                 self.success_rate.insert(0, f"{per_100:.2f}%")
             self.success_rate.config(state='disabled')
 
-        if bond_name in self.bonds_premium_rate:
-            premium_rate = self.bonds_premium_rate[bond_name]
-            try:
-                transfer_value = next(item['TRANSFER_VALUE'] for item in self.df_bonds_data if
-                                      item['SECURITY_NAME_ABBR'] == bond_name)
-
-                estimated_price = transfer_value * (1 + premium_rate)
-                self.estimated_price.config(state='normal')
-                self.estimated_price.delete(0, tk.END)
-                self.estimated_price.insert(0, str(round(estimated_price, 2)))
-                self.estimated_price.config(state='disabled')
-            except StopIteration:
-                self.estimated_price.config(state='normal')
-                self.estimated_price.delete(0, tk.END)
-                self.estimated_price.insert(0, "未录入溢价率…")
-                self.estimated_price.config(state='disabled')
+        if bond_name in self.bonds_estimated_price:
+            estimated_price = self.bonds_estimated_price[bond_name]
+            self.estimated_price.config(state='normal')
+            self.estimated_price.delete(0, tk.END)
+            self.estimated_price.insert(0, f"{estimated_price}元")
         else:
             self.estimated_price.config(state='normal')
             self.estimated_price.delete(0, tk.END)
-            self.estimated_price.insert(0, "数据暂无")
-            self.estimated_price.config(state='disabled')
+            self.estimated_price.insert(0, "数据暂无…")
+        self.estimated_price.config(state='disabled')
 
     def winning_number(self, winning_numbers, num):
         num_str = str(num)
