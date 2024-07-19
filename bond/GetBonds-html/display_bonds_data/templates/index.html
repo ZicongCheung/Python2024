@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GetBonds</title>
+    <style>
+        body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        margin: 0;
+        padding: 0;
+        color: #333;
+        background-color: #f4f4f4;
+    }
+    .container {
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 20px;
+        background: #fff;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    label {
+        display: block;
+        margin-top: 10px;
+        font-weight: bold;
+    }
+    select, input[type="text"] {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        box-sizing: border-box;
+    }
+    input[type="text"][disabled] {
+        background-color: #eee;
+        color: #999;
+    }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GetBonds</h1>
+        <label for="bonds">债券简称</label>
+        <select id="bonds"></select>
+
+        <label for="circulation">发行量</label>
+        <input type="text" id="circulation" disabled>
+
+        <label for="success_rate">中签率</label>
+        <input type="text" id="success_rate" disabled>
+    </div>
+
+    <script>
+        // Fetch the list of bonds and populate the select element
+        fetch('/load_bonds_data_from_thsapi')
+            .then(response => response.json())
+            .then(data => {
+                const selectElement = document.getElementById('bonds');
+                data.forEach(bond => {
+                    const option = document.createElement('option');
+                    option.value = bond.bond_name;
+                    option.textContent = bond.bond_name;
+                    selectElement.appendChild(option);
+                });
+
+                // Listen for changes to the select element
+                selectElement.addEventListener('change', function() {
+                    const selectedBondName = this.value;
+                    fetch(`/get_bond_details?bond_name=${selectedBondName}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.error) {
+                                document.getElementById('circulation').value = data.plan_total;
+                                document.getElementById('success_rate').value = data.success_rate;
+                            } else {
+                                alert(data.error);
+                            }
+                        })
+                        .catch(error => console.error('Error fetching bond details:', error));
+                });
+            })
+            .catch(error => console.error('Error fetching bonds:', error));
+    </script>
+</body>
+</html>
