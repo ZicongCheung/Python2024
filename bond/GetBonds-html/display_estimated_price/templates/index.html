@@ -6,38 +6,38 @@
     <title>GetBonds</title>
     <style>
         body {
-        font-family: Arial, sans-serif;
-        line-height: 1.6;
-        margin: 0;
-        padding: 0;
-        color: #333;
-        background-color: #f4f4f4;
-    }
-    .container {
-        max-width: 600px;
-        margin: 20px auto;
-        padding: 20px;
-        background: #fff;
-        border-radius: 5px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    label {
-        display: block;
-        margin-top: 10px;
-        font-weight: bold;
-    }
-    select, input[type="text"] {
-        width: 100%;
-        padding: 10px;
-        margin-top: 5px;
-        border: 1px solid #ddd;
-        border-radius: 3px;
-        box-sizing: border-box;
-    }
-    input[type="text"][disabled] {
-        background-color: #eee;
-        color: #999;
-    }
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        select, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            box-sizing: border-box;
+        }
+        input[type="text"][disabled] {
+            background-color: #eee;
+            color: #999;
+        }
     </style>
 </head>
 <body>
@@ -46,11 +46,9 @@
         <label for="bonds">债券简称</label>
         <select id="bonds"></select>
 
-        <label for="circulation">发行量</label>
-        <input type="text" id="circulation" disabled>
+        <label for="estimated_price">上市首日估价</label>
+        <input type="text" id="estimated_price" disabled>
 
-        <label for="success_rate">中签率</label>
-        <input type="text" id="success_rate" disabled>
     </div>
 
     <script>
@@ -72,17 +70,21 @@
                     fetch(`/get_bond_details?bond_name=${selectedBondName}`)
                         .then(response => response.json())
                         .then(data => {
-                            if (!data.error) {
-                                document.getElementById('circulation').value = data.plan_total;
-                                document.getElementById('success_rate').value = data.success_rate;
-                            } else {
+                            if ('error' in data) {
                                 alert(data.error);
+                            } else {
+                                document.getElementById('estimated_price').value = data.estimated_price;
                             }
                         })
                         .catch(error => console.error('Error fetching bond details:', error));
                 });
             })
             .catch(error => console.error('Error fetching bonds:', error));
+
+        // 初始化时加载 GitHub 上的债券数据
+        fetch('/load_github_bonds_data')
+            .then(response => response.json())
+            .catch(error => console.error('Error loading GitHub bonds data:', error));
     </script>
 </body>
 </html>

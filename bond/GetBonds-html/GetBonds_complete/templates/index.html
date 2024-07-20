@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GetBonds</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        select, input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            box-sizing: border-box;
+        }
+        input[type="text"][disabled] {
+            background-color: #eee;
+            color: #999;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GetBonds</h1>
+        <label for="bonds">债券简称</label>
+        <select id="bonds"></select>
+
+        <label for="circulation">发行规模</label>
+        <input type="text" id="circulation" disabled>
+
+        <label for="success_rate">中签概率</label>
+        <input type="text" id="success_rate" disabled>
+
+        <label for="estimated_price">首日估价</label>
+        <input type="text" id="estimated_price" disabled>
+
+        <label for="start_number">起始配号</label>
+        <input type="text" id="start_number">
+
+        <button onclick="checkWinning()">查询</button>
+
+        <label for="result">申购结果</label>
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        // 获取债券列表并填充到下拉菜单中
+        fetch('/load_bonds_data_from_thsapi')
+            .then(response => response.json())
+            .then(data => {
+                const selectElement = document.getElementById('bonds');
+                data.forEach(bond => {
+                    const option = document.createElement('option');
+                    option.value = bond.bond_name;
+                    option.textContent = bond.bond_name;
+                    selectElement.appendChild(option);
+                });
+
+                // 监听下拉菜单的选择变化
+                selectElement.addEventListener('change', function() {
+                    const selectedBondName = this.value;
+                    fetch(`/get_bond_details?bond_name=${selectedBondName}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if ('error' in data) {
+                                alert(data.error);
+                            } else {
+                                document.getElementById('circulation').value = parseFloat(data.plan_total).toFixed(2) + '亿';
+
+                                if (parseFloat(data.success_rate) === 0.0) {
+                                    document.getElementById('success_rate').value = '中签结果未公布';
+                                } else {
+                                    document.getElementById('success_rate').value = (parseFloat(data.success_rate) * 1000).toFixed(2) + '%';
+                                }
+
+                                if (data.estimated_price === null) {
+                                    document.getElementById('estimated_price').value = '数据暂无…';
+                                } else {
+                                    document.getElementById('estimated_price').value = data.estimated_price;
+                                }
+                            }
+                        })
+                        .catch(error => console.error('Error fetching bond details:', error));
+                });
+            })
+            .catch(error => console.error('Error fetching bonds:', error));
+
+        function checkWinning() {
+            const selectedBondName = document.getElementById('bonds').value;
+            const startNumber = parseInt(document.getElementById('start_number').value, 10);
+
+            if (isNaN(startNumber)) {
+                alert('请输入有效的初始配售号码！');
+                return;
+            }
+
+            fetch(`/get_bond_details?bond_name=${selectedBondName}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.error) {
+                        const winningNumbers = data.winning_numbers;
+                        const winningResult = check_winning_range(startNumber, 1000, winningNumbers);
+                        const resultDiv = document.getElementById('result');
+                        resultDiv.innerHTML = '';
+                        if (winningResult.length > 0) {
+                            resultDiv.innerHTML = `<p>中签啦！${selectedBondName} 中签配号为: ${winningResult.join(', ')}</p>`;
+                        } else {
+                            resultDiv.innerHTML = `<p>很遗憾，${selectedBondName} 您未中签。</p>`;
+                        }
+                    } else {
+                        alert(data.error);
+                    }
+                })
+                .catch(error => console.error('获取债券详情时出错:', error));
+        }
+
+        function check_winning_range(start_number, count, winning_numbers) {
+            const result = [];
+            for (let i = 0; i < count; i++) {
+                const num = start_number + i;
+                if (winning_number(winning_numbers, num)) {
+                    result.push(num);
+                }
+            }
+            return result;
+        }
+
+        function winning_number(winning_numbers, num) {
+            const num_str = String(num);
+            return Object.keys(winning_numbers).some(digits => {
+                const winning_list = winning_numbers[digits];
+                return winning_list.includes(num_str.slice(-digits));
+            });
+        }
+
+        // 初始化时加载 GitHub 上的债券数据
+        fetch('/load_github_bonds_data')
+            .then(response => response.json())
+            .catch(error => console.error('Error loading GitHub bonds data:', error));
+    </script>
+</body>
+</html>
