@@ -84,6 +84,13 @@
     </div>
 
     <script>
+        // 在获取债券列表并填充到下拉菜单中之前添加默认选项
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = '请选择';
+        defaultOption.selected = true; // 设置为默认选中
+        document.getElementById('bonds').appendChild(defaultOption);
+
         // 获取债券列表并填充到下拉菜单中
         fetch('/load_bonds_data_from_thsapi')
             .then(response => response.json())
@@ -99,6 +106,10 @@
                 // 监听下拉菜单的选择变化
                 selectElement.addEventListener('change', function() {
                     const selectedBondName = this.value;
+                    if (selectedBondName === '') {
+                        clearFields();
+                        return;
+                    }
                     fetch(`/get_bond_details?bond_name=${selectedBondName}`)
                         .then(response => response.json())
                         .then(data => {
@@ -116,7 +127,7 @@
                                 if (data.estimated_price === null) {
                                     document.getElementById('estimated_price').value = '数据暂无…';
                                 } else {
-                                    document.getElementById('estimated_price').value = data.estimated_price;
+                                    document.getElementById('estimated_price').value = data.estimated_price + '元';
                                 }
                             }
                         })
@@ -171,6 +182,14 @@
                 const winning_list = winning_numbers[digits];
                 return winning_list.includes(num_str.slice(-digits));
             });
+        }
+
+        function clearFields() {
+            document.getElementById('circulation').value = '';
+            document.getElementById('success_rate').value = '';
+            document.getElementById('estimated_price').value = '';
+            document.getElementById('start_number').value = '';
+            document.getElementById('result').innerHTML = '';
         }
 
         // 初始化时加载 GitHub 上的债券数据

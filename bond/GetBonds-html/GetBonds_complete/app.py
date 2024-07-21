@@ -79,25 +79,26 @@ def load_github_bonds_data():
 @app.route('/get_bond_details')
 def get_bond_details():
     bond_name = request.args.get('bond_name')
-    if bond_name in ths_bonds_data:
-        bond_data = ths_bonds_data[bond_name]
-        response_data = {
-            'plan_total': bond_data['plan_total'],
-            'success_rate': bond_data['success_rate'],
-            'winning_numbers': bond_data['winning_numbers'],
-        }
-        if bond_name in bonds_estimated_price:
-            response_data['estimated_price'] = bonds_estimated_price[bond_name]
+    if bond_name and bond_name != '请选择':
+        if bond_name in ths_bonds_data:
+            bond_data = ths_bonds_data[bond_name]
+            response_data = {
+                'plan_total': bond_data['plan_total'],
+                'success_rate': bond_data['success_rate'],
+                'winning_numbers': bond_data['winning_numbers'],
+            }
+            if bond_name in bonds_estimated_price:
+                response_data['estimated_price'] = bonds_estimated_price[bond_name]
+            else:
+                response_data['estimated_price'] = None
+            return jsonify(response_data)
+        elif bond_name in bonds_estimated_price:
+            estimated_price = bonds_estimated_price[bond_name]
+            return jsonify({
+                'estimated_price': estimated_price,
+            })
         else:
-            response_data['estimated_price'] = None
-        return jsonify(response_data)
-    elif bond_name in bonds_estimated_price:
-        estimated_price = bonds_estimated_price[bond_name]
-        return jsonify({
-            'estimated_price': estimated_price,
-        })
-    else:
-        return jsonify({'error': 'Bond not found'}), 404
+            return jsonify({'error': 'Bond not found'}), 404
 
 def winning_number(winning_numbers, num):
     num_str = str(num)
