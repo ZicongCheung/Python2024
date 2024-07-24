@@ -15,7 +15,7 @@ class GetBonds(tk.Tk):
         self.resizable(width=False, height=False)
         self.load_icon()
         # 当前软件版本
-        self.software_version = "1.0.0"
+        self.software_version = "1.0.1"
 
         # 初始可转债数据为空
         self.ths_bonds_data = {}
@@ -28,7 +28,7 @@ class GetBonds(tk.Tk):
 
     def load_icon(self):
         # GiteeIconURL
-        icon_url = "https://gitee.com/ZicongCheung/Python2024/raw/main/bond/GetBonds/GetBondsLogo.ico"
+        icon_url = "https://gitee.com/ZicongCheung/WebAPP/raw/main/GetBonds/config_files/GetBondsLogo.ico"
         response = requests.get(icon_url)
         if response.status_code == 200:
             image_data = response.content
@@ -75,6 +75,12 @@ class GetBonds(tk.Tk):
             return
 
         ths_bonds_data = self.ths_bonds_data.get(bond_name, {})
+
+        success_rate = ths_bonds_data.get('success_rate', '')
+        if float(success_rate) == 0.0:
+            messagebox.showinfo("提示", "当前中签结果未公布")
+            return
+
         bond_winning_numbers = ths_bonds_data.get('winning_numbers', {})
 
         # 检查是否有中签号码
@@ -102,7 +108,7 @@ class GetBonds(tk.Tk):
     def load_config(self):
         try:
             # Gitee配置URL
-            config_url = 'https://gitee.com/ZicongCheung/Python2024/raw/main/bond/GetBonds/config.ini'
+            config_url = 'https://gitee.com/ZicongCheung/WebAPP/raw/main/GetBonds/config_files/config.ini'
             response = requests.get(config_url)
             config_content = response.text
 
@@ -175,7 +181,7 @@ class GetBonds(tk.Tk):
     def load_github_bonds_data(self):
         try:
             # Gitee债券数据URL
-            bonds_data_url = 'https://gitee.com/ZicongCheung/Python2024/raw/main/bond/GetBonds/bonds_data.ini'
+            bonds_data_url = 'https://gitee.com/ZicongCheung/WebAPP/raw/main/GetBonds/config_files/bonds_data.ini'
             response = requests.get(bonds_data_url)
             bonds_data_content = response.text
 

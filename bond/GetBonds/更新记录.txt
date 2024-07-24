@@ -18,5 +18,8 @@
 2.更新预估价格计算逻辑，由Gitee获取溢价率*东方财富获取转股价值改变为Gitee直接获取转股价格；
 3.修复中签配号为空时显示中签的BUG，修改后提示"当前中签结果未公布"；
 4.GetBonds version1.0.0对外发布。
+0724
+1.修复中签结果未出但查询显示中签号码的bug；
+2.发布GetBonds version1.0.1.
 
 pyinstaller -F -w --noupx --clean --version-file file_verison_info.txt -i GetBondsLogo.ico GetBonds-fromAPI.py
