@@ -12,7 +12,7 @@ def index():
     return render_template('index.html')
 
 def load_config():
-    config_url = 'https://gitee.com/ZicongCheung/Python2024/raw/main/bond/GetBonds/config.ini'
+    config_url = 'https://gitee.com/ZicongCheung/WebAPP/raw/main/GetBonds/config_files/config.ini'
     response = requests.get(config_url)
     config_content = response.text
     config = configparser.ConfigParser()

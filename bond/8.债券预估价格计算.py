@@ -43,8 +43,8 @@ class GetBonds(tk.Tk):
 
     def load_config(self):
         try:
-            # GitHub配置URL
-            config_url = 'https://github.com/ZicongCheung/Python2024/blob/main/bond/GetBonds/config.ini?raw=true'
+            # Gitee配置URL
+            config_url = 'https://gitee.com/ZicongCheung/WebAPP/raw/main/GetBonds/config_files/config.ini'
             response = requests.get(config_url)
             config_content = response.text
 
@@ -117,8 +117,8 @@ class GetBonds(tk.Tk):
 
     def load_github_bonds_data(self):
         try:
-            # GitHub债券数据URL
-            bonds_data_url = 'https://github.com/ZicongCheung/Python2024/blob/main/bond/GetBonds/bonds_data.ini?raw=true'
+            # Gitee债券数据URL
+            bonds_data_url = 'https://gitee.com/ZicongCheung/WebAPP/raw/main/GetBonds/config_files/bonds_data.ini'
             response = requests.get(bonds_data_url)
             bonds_data_content = response.text
 
