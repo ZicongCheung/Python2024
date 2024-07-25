@@ -28,7 +28,7 @@ class GetBonds(tk.Tk):
 
     def load_icon(self):
         # GiteeIconURL
-        icon_url = "https://gitee.com/ZicongCheung/WebAPP/raw/main/GetBonds/config_files/GetBondsLogo.ico"
+        icon_url = "https://gitee.com/ZicongCheung/Python2024/raw/main/bond/GetBonds/GetBondsLogo.ico"
         response = requests.get(icon_url)
         if response.status_code == 200:
             image_data = response.content
@@ -108,7 +108,7 @@ class GetBonds(tk.Tk):
     def load_config(self):
         try:
             # Gitee配置URL
-            config_url = 'https://gitee.com/ZicongCheung/WebAPP/raw/main/GetBonds/config_files/config.ini'
+            config_url = 'https://gitee.com/ZicongCheung/getbonds/raw/main/config_files/config.ini'
             response = requests.get(config_url)
             config_content = response.text
 
@@ -181,7 +181,7 @@ class GetBonds(tk.Tk):
     def load_github_bonds_data(self):
         try:
             # Gitee债券数据URL
-            bonds_data_url = 'https://gitee.com/ZicongCheung/WebAPP/raw/main/GetBonds/config_files/bonds_data.ini'
+            bonds_data_url = 'https://gitee.com/ZicongCheung/getbonds/raw/main/config_files/bonds_data.ini'
             response = requests.get(bonds_data_url)
             bonds_data_content = response.text
 
