@@ -16,8 +16,8 @@ headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36"
 }
 
-base_url = "https://www.cls.cn/v1/roll/get_roll_list?app=CailianpressWeb&category=&os=web&rn=30"
-
+telegraph_count = 30
+base_url = f"https://www.cls.cn/v1/roll/get_roll_list?app=CailianpressWeb&category=&os=web&rn={telegraph_count}"
 
 def get_json_data(base_url, headers):
     s = requests.Session()
