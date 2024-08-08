@@ -2,7 +2,7 @@ import requests
 import time
 
 # 获取东方财富股指信息
-url = 'https://push2.eastmoney.com/api/qt/ulist/get?fltt=1&invt=2&fields=f2,f4,f3,f14&secids=1.000001,0.399001,100.DJIA,100.SPX,100.NDX&pn=1&np=1&pz=20&dect=1'
+url = 'https://push2.eastmoney.com/api/qt/ulist/get?fltt=1&invt=2&fields=f2,f4,f3,f14&secids=1.000001,0.399001,0.399006,100.DJIA,100.SPX,100.NDX&pn=1&np=1&pz=20&dect=1'
 
 def fetch_index_data():
     try:
