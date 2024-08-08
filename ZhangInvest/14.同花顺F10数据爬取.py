@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 
 stock_code = '600000'
-url = f"http://basic.10jqka.com.cn/{stock_code}/"
+url = f"https://basic.10jqka.com.cn/{stock_code}/"
 headers = {
     "Accept": "*/*",
     "Accept-Encoding": "gzip, deflate",
