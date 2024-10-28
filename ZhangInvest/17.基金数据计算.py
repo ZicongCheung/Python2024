@@ -15,6 +15,7 @@ fund_nav_date = fund_data['jzrq']  # 基金净值日期
 fund_nav = float(fund_data['dwjz'])  # 基金单位净值
 fund_estimated_nav = float(fund_data['gsz'])  # 基金估算净值
 fund_estimated_growth_rate = float(fund_data['gszzl'])  # 基金估算增长率
+fund_estimated_nav_date = fund_data['gztime']
 hold_shares = 2546.8  # 假设的持有份额
 cost_nav = 0.7853  # 假设的持仓成本净值
 
@@ -76,9 +77,10 @@ else:
 hold_profit = (recent_nav - cost_nav) * hold_shares
 
 # 输出结果
-print(f"最近一个交易日的日期：{recent_trade_date}")
+print(f"净值日期：{recent_trade_date}")
 print(f"最近一个交易日的单位净值：{recent_nav}")
 print(f"最近一个交易日的净值增长率：{recent_nav_growth_rate}%")
+print(f"估算净值日期：{fund_estimated_nav_date}")
 print(f"最近一个交易日的单位估值：{recent_estimated_nav}")
 print(f"最近一个交易日的估算增长率：{recent_estimated_growth_rate}%")
 print(f"昨日收益：{yesterday_profit:.2f} 元")
