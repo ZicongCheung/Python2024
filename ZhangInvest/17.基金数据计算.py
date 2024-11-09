@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timedelta
 
 # 获取基金基础数据
-fund_code = "011613"
+fund_code = "007230"
 url_fund_data = f'http://fundgz.1234567.com.cn/js/{fund_code}.js'
 response_fund_data = requests.get(url_fund_data)
 data_fund = response_fund_data.text.replace('jsonpgz(', '').replace(');', '')
@@ -15,7 +15,7 @@ fund_nav_date = fund_data['jzrq']  # 基金净值日期
 fund_nav = float(fund_data['dwjz'])  # 基金单位净值
 fund_estimated_nav = float(fund_data['gsz'])  # 基金估算净值
 fund_estimated_growth_rate = float(fund_data['gszzl'])  # 基金估算增长率
-fund_estimated_nav_date = fund_data['gztime']
+fund_estimated_nav_date = fund_data['gztime'][5 :10]  # 估算净值日期（仅取YYYY-MM-DD）
 hold_shares = 2546.8  # 假设的持有份额
 cost_nav = 0.7853  # 假设的持仓成本净值
 
@@ -43,10 +43,10 @@ third_last_nav = last_three[-3]['y']
 
 # 计算最近一个交易日的日期
 if fund_nav == last_nav:
-    recent_trade_date = fund_nav_date
+    recent_trade_date = fund_nav_date.strftime("%m-%d")
 elif fund_nav == second_last_nav:
     # 基金净值日期加一天
-    recent_trade_date = (datetime.strptime(fund_nav_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+    recent_trade_date = (datetime.strptime(fund_nav_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%m-%d")
 else:
     print("无法比对基金基础数据与历史数据")
     exit()
@@ -65,7 +65,7 @@ today = datetime.now().date()
 day_before_yesterday = (today - timedelta(days=2))
 
 # 如果最近一个交易日是北京时间的前天或更早，昨日收益为 0
-if recent_trade_date == day_before_yesterday.strftime("%Y-%m-%d"):
+if recent_trade_date == day_before_yesterday.strftime("%m-%d"):
     yesterday_profit = 0.0
 else:
     # 正常计算昨日收益
