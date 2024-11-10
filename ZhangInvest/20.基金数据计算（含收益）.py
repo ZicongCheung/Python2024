@@ -119,11 +119,24 @@ def calculate_fund_holdings(fund_code):
         print(f"基金 {fund_code} 当前没有持有份额，无法计算持仓成本价。")
         return 0, 0
 
+# 计算所有基金的持有金额总和
+def calculate_total_holding_value(funds):
+    total_value = 0.0
+    for fund_code, _ in funds:
+        hold_shares, _ = calculate_fund_holdings(fund_code)
+        if hold_shares > 0:
+            last_three = fetch_fund_history(fund_code)
+            if last_three:
+                recent_nav = last_three[-1]['y']
+                total_value += recent_nav * hold_shares
+    return total_value
+
 # 主函数
 def main():
     funds = get_funds()
     domestic_trade_date = None
     foreign_funds = []
+    total_holding_value = calculate_total_holding_value(funds)  # 计算所有基金的持有金额总和
 
     # 第一步：处理境内基金
     for fund_code, is_domestic in funds:
@@ -159,6 +172,9 @@ def main():
             holding_value = recent_nav * hold_shares
             holding_profit_rate = hold_profit / (cost_nav * hold_shares) if cost_nav > 0 else 0.0
 
+            # 计算持仓占比
+            holding_ratio = holding_value / total_holding_value * 100 if total_holding_value > 0 else 0.0
+
             # 输出结果
             print(f"基金代码：{fund_code} (境内)")
             print(f"净值日期：{recent_trade_date}")
@@ -170,7 +186,8 @@ def main():
             print(f"昨日收益：{yesterday_profit:.2f} 元")
             print(f"持有收益：{hold_profit:.2f} 元")
             print(f"持有金额：{holding_value:.2f} 元")
-            print(f"持有收益率：{holding_profit_rate*100:.2f} %\n")
+            print(f"持有收益率：{holding_profit_rate*100:.2f} %")
+            print(f"持仓占比：{holding_ratio:.2f} %\n")
 
             # 记录境内基金的交易日
             if not domestic_trade_date:
@@ -206,6 +223,9 @@ def main():
             holding_value = recent_nav * hold_shares
             holding_profit_rate = hold_profit / (cost_nav * hold_shares) if cost_nav > 0 else 0.0
 
+            # 计算持仓占比
+            holding_ratio = holding_value / total_holding_value * 100 if total_holding_value > 0 else 0.0
+
             # 输出结果
             print(f"基金代码：{fund_code} (境外)")
             print(f"净值日期：{foreign_trade_date}")
@@ -217,7 +237,8 @@ def main():
             print(f"昨日收益：{yesterday_profit:.2f} 元")
             print(f"持有收益：{hold_profit:.2f} 元")
             print(f"持有金额：{holding_value:.2f} 元")
-            print(f"持有收益率：{holding_profit_rate*100:.2f} %\n")
+            print(f"持有收益率：{holding_profit_rate*100:.2f} %")
+            print(f"持仓占比：{holding_ratio:.2f} %\n")
 
 if __name__ == "__main__":
     main()
