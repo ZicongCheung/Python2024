@@ -155,6 +155,10 @@ def main():
             yesterday_profit, hold_profit = calculate_profits(recent_nav, last_three[-1]['y'], last_three[-2]['y'],
                                                               hold_shares, cost_nav, recent_trade_date, is_domestic)
 
+            # 计算持有金额和持有收益率
+            holding_value = recent_nav * hold_shares
+            holding_profit_rate = hold_profit / (cost_nav * hold_shares) if cost_nav > 0 else 0.0
+
             # 输出结果
             print(f"基金代码：{fund_code} (境内)")
             print(f"净值日期：{recent_trade_date}")
@@ -164,7 +168,9 @@ def main():
             print(f"单位估值：{recent_estimated_nav}")
             print(f"估算增长率：{recent_estimated_growth_rate}%")
             print(f"昨日收益：{yesterday_profit:.2f} 元")
-            print(f"持有收益：{hold_profit:.2f} 元\n")
+            print(f"持有收益：{hold_profit:.2f} 元")
+            print(f"持有金额：{holding_value:.2f} 元")
+            print(f"持有收益率：{holding_profit_rate*100:.2f} %\n")
 
             # 记录境内基金的交易日
             if not domestic_trade_date:
@@ -196,6 +202,10 @@ def main():
             yesterday_profit, hold_profit = calculate_profits(recent_nav, last_three[-1]['y'], last_three[-2]['y'],
                                                               hold_shares, cost_nav, foreign_trade_date, 'N')
 
+            # 计算持有金额和持有收益率
+            holding_value = recent_nav * hold_shares
+            holding_profit_rate = hold_profit / (cost_nav * hold_shares) if cost_nav > 0 else 0.0
+
             # 输出结果
             print(f"基金代码：{fund_code} (境外)")
             print(f"净值日期：{foreign_trade_date}")
@@ -205,8 +215,9 @@ def main():
             print(f"单位估值：--")
             print(f"估算增长率：--")
             print(f"昨日收益：{yesterday_profit:.2f} 元")
-            print(f"持有收益：{hold_profit:.2f} 元\n")
-
+            print(f"持有收益：{hold_profit:.2f} 元")
+            print(f"持有金额：{holding_value:.2f} 元")
+            print(f"持有收益率：{holding_profit_rate*100:.2f} %\n")
 
 if __name__ == "__main__":
     main()
