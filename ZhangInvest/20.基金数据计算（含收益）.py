@@ -66,14 +66,14 @@ def calculate_profits(recent_nav, second_last_nav, third_last_nav, hold_shares, 
 
     # 根据基金类型判断最近交易日的收益计算
     if is_domestic == 'Y':  # 境内基金
-        # 如果最近一个交易日日期为北京时间前天或更早，那昨日收益应该为0
-        if recent_trade_date == day_before_yesterday.strftime("%m-%d"):
+        # 如果最近一个交易日早于或等于前天，则昨日收益为0
+        if datetime.strptime(recent_trade_date, "%m-%d").date() <= day_before_yesterday:
             yesterday_profit = 0.0
         else:
             yesterday_profit = (second_last_nav - third_last_nav) * hold_shares
     else:  # 境外基金
-        # 如果最近一个交易日日期为北京时间大前天或更早，那昨日收益应该为0
-        if recent_trade_date == three_days_ago.strftime("%m-%d"):
+        # 如果最近一个交易日早于或等于大前天，则昨日收益为0
+        if datetime.strptime(recent_trade_date, "%m-%d").date() <= three_days_ago:
             yesterday_profit = 0.0
         else:
             yesterday_profit = (second_last_nav - third_last_nav) * hold_shares
