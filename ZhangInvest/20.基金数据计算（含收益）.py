@@ -43,20 +43,30 @@ def fetch_fund_history(fund_code):
         print(f"请求失败：{e} (基金代码：{fund_code})")
     return None
 
-# 获取境内基金最近交易日
+# 获取基金最近交易日
 def get_recent_trade_date(fund_data, last_three):
     try:
         fund_nav_date = fund_data['jzrq']
+        estimated_date = fund_data['gztime'][5:10]
         fund_nav = float(fund_data['dwjz'])
         last_nav = last_three[-1]['y']
         second_last_nav = last_three[-2]['y']
-        if fund_nav == last_nav:
-            return datetime.strptime(fund_nav_date, "%Y-%m-%d").strftime("%m-%d")
-        elif fund_nav == second_last_nav:
-            return (datetime.strptime(fund_nav_date, "%Y-%m-%d") + timedelta(days=1)).strftime("%m-%d")
+
+        if fund_nav == second_last_nav:
+            # 今日基金净值已更新，取基金估值日期
+            recent_trade_date = estimated_date
+            foreign_trade_date = datetime.strptime(fund_nav_date, "%Y-%m-%d").strftime("%m-%d")
+        elif fund_nav == last_nav:
+            # 今日基金净值未更新，取基金净值日期
+            recent_trade_date = datetime.strptime(fund_nav_date, "%Y-%m-%d").strftime("%m-%d")
+            foreign_trade_date = (datetime.strptime(fund_nav_date, "%Y-%m-%d") - timedelta(days=1)).strftime("%m-%d")
+        else:
+            return None, None
+
+        return recent_trade_date, foreign_trade_date
     except KeyError:
         pass
-    return None
+    return None, None
 
 # 计算昨日收益和持有收益
 def calculate_profits(recent_nav, second_last_nav, third_last_nav, hold_shares, cost_nav, recent_trade_date, is_domestic):
@@ -124,7 +134,7 @@ def main():
                 continue
 
             # 获取最近交易日
-            recent_trade_date = get_recent_trade_date(fund_data, history)
+            recent_trade_date, foreign_trade_date = get_recent_trade_date(fund_data, history)
             if not recent_trade_date:
                 continue
 
@@ -171,7 +181,9 @@ def main():
 
             recent_nav = history[-1]['y']
             recent_nav_growth_rate = history[-1]['equityReturn']
-            foreign_trade_date = (datetime.strptime(domestic_trade_date, "%m-%d") - timedelta(days=1)).strftime("%m-%d")
+
+            # 使用境内基金的最近交易日和境外基金的最近交易日
+            recent_trade_date = foreign_trade_date if foreign_trade_date else (datetime.strptime(domestic_trade_date, "%m-%d") - timedelta(days=1)).strftime("%m-%d")
 
             transactions = fetch_confirmed_transactions(conn, fund_code)
             hold_shares, cost_nav = calculate_fund_holdings(transactions)
@@ -179,12 +191,12 @@ def main():
                 continue
 
             yesterday_profit, hold_profit = calculate_profits(
-                recent_nav, history[-1]['y'], history[-2]['y'], hold_shares, cost_nav, foreign_trade_date, 'N')
+                recent_nav, history[-1]['y'], history[-2]['y'], hold_shares, cost_nav, recent_trade_date, 'N')
             holding_value = recent_nav * hold_shares
             holding_profit_rate = hold_profit / (cost_nav * hold_shares) if cost_nav > 0 else 0.0
 
             print(f"基金代码：{fund_code} (境外)")
-            print(f"净值日期：{foreign_trade_date}")
+            print(f"净值日期：{recent_trade_date}")
             print(f"单位净值：{recent_nav}")
             print(f"净值增长率：{recent_nav_growth_rate}%")
             print(f"估算净值日期：--")
