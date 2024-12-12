@@ -63,14 +63,14 @@ def calculate_fund_data(conn, fund_code, start_date, end_date):
     cursor.execute("""
         SELECT SUM(transaction_amount + transaction_fee) 
         FROM transactions 
-        WHERE fund_code = ? AND transaction_type IN ('买入', '定投') AND transaction_time BETWEEN ? AND ?
+        WHERE fund_code = ? AND transaction_type IN ('买入', '定投') AND confirmed_date BETWEEN ? AND ?
     """, (fund_code, start_date, end_date))
     transaction_invest = cursor.fetchone()[0] or 0
 
     cursor.execute("""
         SELECT SUM(transaction_amount + transaction_fee) 
         FROM conversion_details 
-        WHERE fund_code = ? AND transaction_time BETWEEN ? AND ?
+        WHERE fund_code = ? AND confirmed_date BETWEEN ? AND ?
     """, (fund_code, start_date, end_date))
     conversion_invest = cursor.fetchone()[0] or 0
 
@@ -80,7 +80,7 @@ def calculate_fund_data(conn, fund_code, start_date, end_date):
     cursor.execute("""
         SELECT SUM(confirmed_shares) 
         FROM transactions 
-        WHERE fund_code = ? AND transaction_type IN ('卖出', '转换') AND transaction_time BETWEEN ? AND ?
+        WHERE fund_code = ? AND transaction_type IN ('卖出', '转换') AND confirmed_date BETWEEN ? AND ?
     """, (fund_code, start_date, end_date))
     redemption_amount = cursor.fetchone()[0] or 0
 
@@ -88,27 +88,51 @@ def calculate_fund_data(conn, fund_code, start_date, end_date):
     cursor.execute("""
         SELECT SUM(confirmed_shares) 
         FROM transactions 
-        WHERE fund_code = ? AND transaction_type IN ('买入', '定投') AND transaction_time < ?
+        WHERE fund_code = ? AND transaction_type IN ('买入', '定投') AND confirmed_date < ?
     """, (fund_code, start_date))
     transaction_shares = cursor.fetchone()[0] or 0
 
     cursor.execute("""
         SELECT SUM(confirmed_shares) 
         FROM conversion_details 
-        WHERE fund_code = ? AND transaction_time < ?
+        WHERE fund_code = ? AND confirmed_date < ?
     """, (fund_code, start_date))
     conversion_shares = cursor.fetchone()[0] or 0
 
     cursor.execute("""
         SELECT SUM(transaction_amount) 
         FROM transactions 
-        WHERE fund_code = ? AND transaction_type IN ('卖出', '转换') AND transaction_time < ?
+        WHERE fund_code = ? AND transaction_type IN ('卖出', '转换') AND confirmed_date < ?
     """, (fund_code, start_date))
     sold_shares = cursor.fetchone()[0] or 0
 
     total_shares = transaction_shares + conversion_shares - sold_shares
 
-    return total_invest, redemption_amount, total_shares
+    # 当前持有基金份额（不受时间限制）
+    cursor.execute("""
+        SELECT SUM(confirmed_shares) 
+        FROM transactions 
+        WHERE fund_code = ? AND transaction_type IN ('买入', '定投')
+    """, (fund_code,))
+    current_transaction_shares = cursor.fetchone()[0] or 0
+
+    cursor.execute("""
+        SELECT SUM(confirmed_shares) 
+        FROM conversion_details 
+        WHERE fund_code = ?
+    """, (fund_code,))
+    current_conversion_shares = cursor.fetchone()[0] or 0
+
+    cursor.execute("""
+        SELECT SUM(transaction_amount) 
+        FROM transactions 
+        WHERE fund_code = ? AND transaction_type IN ('卖出', '转换')
+    """, (fund_code,))
+    current_sold_shares = cursor.fetchone()[0] or 0
+
+    current_shares = current_transaction_shares + current_conversion_shares - current_sold_shares
+
+    return total_invest, redemption_amount, total_shares, current_shares
 
 # 主流程
 def main(interval):
@@ -127,15 +151,23 @@ def main(interval):
             if fund_history:
                 last_nav, last_date = get_last_nav_before_date(fund_history, end_date)
                 if last_nav is not None:
-                    total_invest, redemption_amount, total_shares = calculate_fund_data(conn, fund_code, start_date, end_date_str)
-                    holding_value = total_shares * last_nav
+                    total_invest, redemption_amount, total_shares, current_shares = calculate_fund_data(conn, fund_code, start_date, end_date_str)
+                    current_nav = fund_history[-1]['y']  # 当前基金最新净值
+                    current_value = current_shares * current_nav  # 当前持有基金价值
+                    holding_value_before = total_shares * last_nav  # 时间区间前持有基金价值
+                    interval_profit = current_value - total_invest + redemption_amount - holding_value_before  # 时间区间内收益
+
                     print(f"基金代码: {fund_code}, "
                           f"时间区间内投入本金: {total_invest}, "
                           f"赎回金额: {redemption_amount}, "
                           f"时间区间前基金持有份额: {total_shares}, "
                           f"时间区间前最后交易日日期: {last_date}, "
                           f"时间区间前最后交易日净值: {last_nav}, "
-                          f"时间区间前基金持有价值: {holding_value}")
+                          f"时间区间前持有基金价值: {holding_value_before},"
+                          f"当前基金最新净值: {current_nav}, "
+                          f"当前持有基金份额: {current_shares}, "
+                          f"当前持有基金价值: {current_value}, "
+                          f"时间区间内收益: {interval_profit}")
                 else:
                     print(f"基金代码: {fund_code}, 无法获取指定时间区间之前的净值")
             else:
