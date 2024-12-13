@@ -25,15 +25,26 @@ def fetch_fund_history(fund_code):
     return None
 
 # 获取输入时间区间之前的最后一个交易日
-def get_last_nav_before_date(fund_history, end_date):
+def get_last_nav_before_date(fund_history, end_date, is_domestic):
     end_timestamp = int(end_date.timestamp() * 1000)  # 转换为毫秒时间戳
     # 确保筛选的是 "严格小于" 结束日期的记录
     filtered_data = [item for item in fund_history if item['x'] < end_timestamp]
+
     if not filtered_data:
-        return None, None
-    last_record = filtered_data[-1]
+        return None, None  # 无法获取指定时间区间之前的交易数据
+
+    if is_domestic == "Y":
+        # 境内基金取最后一个交易日
+        last_record = filtered_data[-1]
+    else:
+        # 境外基金取倒数第二个交易日
+        if len(filtered_data) < 2:
+            return None, None  # 数据不足以取倒数第二个交易日
+        last_record = filtered_data[-2]
+
+    last_nav = last_record['y']
     last_date = datetime.fromtimestamp(last_record['x'] / 1000).strftime('%Y-%m-%d')
-    return last_record['y'], last_date  # 返回净值和对应日期
+    return last_nav, last_date
 
 # 获取时间区间的结束日期
 def get_end_date(interval):
@@ -53,120 +64,101 @@ def get_end_date(interval):
         raise ValueError("无效的时间区间")
 
 # 计算时间区间的金额数据
-def calculate_fund_data(conn, fund_code, start_date, end_date):
+def calculate_fund_data(conn, fund_code, start_date, end_date, last_nav, current_nav):
     cursor = conn.cursor()
 
     # 调整 end_date 格式，确保时间精度
     end_date += " 23:59:59"
 
-    # 时间区间内的投入本金
+    # 时间区间前持有的基金份额
     cursor.execute("""
-        SELECT SUM(transaction_amount + transaction_fee) 
-        FROM transactions 
-        WHERE fund_code = ? AND transaction_type IN ('买入', '定投') AND confirmed_date BETWEEN ? AND ?
-    """, (fund_code, start_date, end_date))
-    transaction_invest = cursor.fetchone()[0] or 0
-
-    cursor.execute("""
-        SELECT SUM(transaction_amount + transaction_fee) 
-        FROM conversion_details 
-        WHERE fund_code = ? AND confirmed_date BETWEEN ? AND ?
-    """, (fund_code, start_date, end_date))
-    conversion_invest = cursor.fetchone()[0] or 0
-
-    total_invest = transaction_invest + conversion_invest
-
-    # 时间区间内的赎回金额
-    cursor.execute("""
-        SELECT SUM(confirmed_shares) 
-        FROM transactions 
-        WHERE fund_code = ? AND transaction_type IN ('卖出', '转换') AND confirmed_date BETWEEN ? AND ?
-    """, (fund_code, start_date, end_date))
-    redemption_amount = cursor.fetchone()[0] or 0
-
-    # 时间区间前的基金持有份额
-    cursor.execute("""
-        SELECT SUM(confirmed_shares) 
-        FROM transactions 
+        SELECT SUM(confirmed_shares)
+        FROM transactions
         WHERE fund_code = ? AND transaction_type IN ('买入', '定投') AND confirmed_date < ?
     """, (fund_code, start_date))
     transaction_shares = cursor.fetchone()[0] or 0
 
     cursor.execute("""
-        SELECT SUM(confirmed_shares) 
-        FROM conversion_details 
+        SELECT SUM(confirmed_shares)
+        FROM conversion_details
         WHERE fund_code = ? AND confirmed_date < ?
     """, (fund_code, start_date))
     conversion_shares = cursor.fetchone()[0] or 0
 
     cursor.execute("""
-        SELECT SUM(transaction_amount) 
-        FROM transactions 
+        SELECT SUM(transaction_amount)
+        FROM transactions
         WHERE fund_code = ? AND transaction_type IN ('卖出', '转换') AND confirmed_date < ?
     """, (fund_code, start_date))
     sold_shares = cursor.fetchone()[0] or 0
 
-    total_shares = transaction_shares + conversion_shares - sold_shares
+    shares_before_interval = transaction_shares + conversion_shares - sold_shares
 
-    # 当前持有基金份额（不受时间限制）
+    # 时间区间内购入的基金份额收益
     cursor.execute("""
-        SELECT SUM(confirmed_shares) 
-        FROM transactions 
-        WHERE fund_code = ? AND transaction_type IN ('买入', '定投')
-    """, (fund_code,))
-    current_transaction_shares = cursor.fetchone()[0] or 0
-
-    cursor.execute("""
-        SELECT SUM(confirmed_shares) 
-        FROM conversion_details 
-        WHERE fund_code = ?
-    """, (fund_code,))
-    current_conversion_shares = cursor.fetchone()[0] or 0
+        SELECT confirmed_shares, confirmed_nav, transaction_fee
+        FROM transactions
+        WHERE fund_code = ? AND transaction_type IN ('买入', '定投') AND confirmed_date BETWEEN ? AND ?
+    """, (fund_code, start_date, end_date))
+    transactions = cursor.fetchall()
 
     cursor.execute("""
-        SELECT SUM(transaction_amount) 
-        FROM transactions 
-        WHERE fund_code = ? AND transaction_type IN ('卖出', '转换')
-    """, (fund_code,))
-    current_sold_shares = cursor.fetchone()[0] or 0
+        SELECT confirmed_shares, confirmed_nav, transaction_fee
+        FROM conversion_details
+        WHERE fund_code = ? AND confirmed_date BETWEEN ? AND ?
+    """, (fund_code, start_date, end_date))
+    conversions = cursor.fetchall()
 
-    current_shares = current_transaction_shares + current_conversion_shares - current_sold_shares
+    purchase_profit = sum(confirmed_shares * (current_nav - confirmed_nav)
+                          for confirmed_shares, confirmed_nav, _ in transactions + conversions)
 
-    return total_invest, redemption_amount, total_shares, current_shares
+    purchase_fees = sum(transaction_fee for _, _, transaction_fee in transactions + conversions)
+
+    # 时间区间内卖出/转换的基金份额收益
+    cursor.execute("""
+        SELECT transaction_amount, confirmed_shares
+        FROM transactions
+        WHERE fund_code = ? AND transaction_type IN ('卖出', '转换') AND confirmed_date BETWEEN ? AND ?
+    """, (fund_code, start_date, end_date))
+    redemptions = cursor.fetchall()
+
+    redemption_profit = sum(transaction_amount * (current_nav - last_nav)
+                            for transaction_amount, confirmed_shares in redemptions)
+
+    return shares_before_interval, purchase_profit, redemption_profit, purchase_fees
 
 # 主流程
 def main(interval):
     try:
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT fund_code FROM funds")
-        fund_codes = [row[0] for row in cursor.fetchall()]
+        cursor.execute("SELECT fund_code, is_domestic FROM funds")
+        fund_records = cursor.fetchall()
 
         end_date = get_end_date(interval)
         start_date = end_date.strftime('%Y-%m-%d')
         end_date_str = datetime.today().strftime('%Y-%m-%d')
 
-        for fund_code in fund_codes:
+        for fund_code, is_domestic in fund_records:
             fund_history = fetch_fund_history(fund_code)
             if fund_history:
-                last_nav, last_date = get_last_nav_before_date(fund_history, end_date)
+                last_nav, last_date = get_last_nav_before_date(fund_history, end_date, is_domestic)
                 if last_nav is not None:
-                    total_invest, redemption_amount, total_shares, current_shares = calculate_fund_data(conn, fund_code, start_date, end_date_str)
                     current_nav = fund_history[-1]['y']  # 当前基金最新净值
-                    current_value = current_shares * current_nav  # 当前持有基金价值
-                    holding_value_before = total_shares * last_nav  # 时间区间前持有基金价值
-                    interval_profit = current_value - total_invest + redemption_amount - holding_value_before  # 时间区间内收益
+
+                    shares_before_interval, purchase_profit, redemption_profit, purchase_fees = calculate_fund_data(
+                        conn, fund_code, start_date, end_date_str, last_nav, current_nav)
+
+                    interval_profit = shares_before_interval * (current_nav - last_nav) + purchase_profit + redemption_profit - purchase_fees
 
                     print(f"基金代码: {fund_code}, "
-                          f"时间区间内投入本金: {total_invest}, "
-                          f"赎回金额: {redemption_amount}, "
-                          f"时间区间前基金持有份额: {total_shares}, "
+                          f"时间区间前持有基金份额: {shares_before_interval}, "
                           f"时间区间前最后交易日日期: {last_date}, "
                           f"时间区间前最后交易日净值: {last_nav}, "
-                          f"时间区间前持有基金价值: {holding_value_before},"
                           f"当前基金最新净值: {current_nav}, "
-                          f"当前持有基金份额: {current_shares}, "
-                          f"当前持有基金价值: {current_value}, "
+                          f"时间区间内购入份额收益: {purchase_profit}, "
+                          f"时间区间内赎回/转换份额收益: {redemption_profit}, "
+                          f"时间区间内购入手续费: {purchase_fees}, "
                           f"时间区间内收益: {interval_profit}")
                 else:
                     print(f"基金代码: {fund_code}, 无法获取指定时间区间之前的净值")
@@ -180,8 +172,3 @@ def main(interval):
 if __name__ == "__main__":
     user_interval = input("请输入时间区间（本年、本季、本月、本周）：")
     main(user_interval)
-现在代码中计算时间区间内收益的公式为：
-时间区间内的收益=当前持有基金价值-时间区间内的投入本金+时间区间内的赎回金额-时间区间前的基金持有价值
-
-实际上应该是：
-时间区间内的收益=时间区间前持有的基金份额*（当前基金最新净值-时间区间前最后交易日净值）+时间区间内每次买入/定投的基金份额*（当前基金最新净值-每次买入/定投的基金净值）-时间区间内每次卖出/转换的基金份额*（当前基金最新净值-每次卖出/转换的基金份额）

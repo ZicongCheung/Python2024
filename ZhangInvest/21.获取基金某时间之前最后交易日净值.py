@@ -25,12 +25,25 @@ def fetch_fund_history(fund_code):
     return None
 
 # 获取输入时间区间之前的最后一个交易日
-def get_last_nav_before_date(fund_history, end_date):
+def get_last_nav_before_date(fund_history, end_date, is_domestic):
     end_timestamp = int(end_date.timestamp() * 1000)  # 转换为毫秒时间戳
     filtered_data = [item for item in fund_history if item['x'] < end_timestamp]
+
     if not filtered_data:
-        return None
-    return filtered_data[-1]['y']  # 返回最后一个交易日的净值
+        return None, None  # 无法获取指定时间区间之前的交易数据
+
+    if is_domestic == "Y":
+        # 境内基金取最后一个交易日
+        last_record = filtered_data[-1]
+    else:
+        # 境外基金取倒数第二个交易日
+        if len(filtered_data) < 2:
+            return None, None  # 数据不足以取倒数第二个交易日
+        last_record = filtered_data[-2]
+
+    last_nav = last_record['y']
+    last_date = datetime.fromtimestamp(last_record['x'] / 1000).strftime('%Y-%m-%d')
+    return last_nav, last_date
 
 # 获取时间区间的结束日期
 def get_end_date(interval):
@@ -43,8 +56,9 @@ def get_end_date(interval):
     elif interval == "本月":
         return datetime(today.year, today.month, 1)
     elif interval == "本周":
-        last_friday = today - timedelta(days=today.weekday() + 3) if today.weekday() < 5 else today - timedelta(days=today.weekday() - 4)
-        return last_friday
+        # 本周第一天减去一天，即上周最后一个交易日的结束日期
+        monday = today - timedelta(days=today.weekday())
+        return monday - timedelta(days=1)
     else:
         raise ValueError("无效的时间区间")
 
@@ -53,17 +67,17 @@ def main(interval):
     try:
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT fund_code FROM funds")
-        fund_codes = [row[0] for row in cursor.fetchall()]
+        cursor.execute("SELECT fund_code, is_domestic FROM funds")
+        fund_records = cursor.fetchall()
 
         end_date = get_end_date(interval)
 
-        for fund_code in fund_codes:
+        for fund_code, is_domestic in fund_records:
             fund_history = fetch_fund_history(fund_code)
             if fund_history:
-                last_nav = get_last_nav_before_date(fund_history, end_date)
+                last_nav, last_date = get_last_nav_before_date(fund_history, end_date, is_domestic)
                 if last_nav is not None:
-                    print(f"基金代码: {fund_code}, 时间区间之前的最后一个交易日净值: {last_nav}")
+                    print(f"基金代码: {fund_code}, 时间区间之前的最后交易日净值: {last_nav}, 日期: {last_date}")
                 else:
                     print(f"基金代码: {fund_code}, 无法获取指定时间区间之前的净值")
             else:
